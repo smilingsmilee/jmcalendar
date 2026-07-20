@@ -1,7 +1,7 @@
 import os
 import streamlit as st
 from dotenv import load_dotenv
-from supabase import create_client, Client
+from supabase import create_client
 
 load_dotenv()
 
@@ -40,3 +40,13 @@ def add_new_user_in_database(user_id, name, email):
         "name": name,
         "email": email
     }).execute()
+
+def get_availability(user_id):
+    result = get_client().table("availabilities").select("timestamp").eq("id", user_id).execute()
+    return {row["timestamp"] for row in result.data}
+
+def add_availability(user_id, timestamp):
+    get_client().table("availabilities").upsert({"id": user_id, "timestamp": timestamp}).execute()
+
+def remove_availability(user_id, timestamp):
+    get_client().table("availabilities").delete().eq("id", user_id).eq("timestamp", timestamp).execute()

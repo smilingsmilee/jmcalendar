@@ -1,6 +1,7 @@
 import streamlit as st
 from database import *
 from views.landing import *
+from views.home import *
 
 def main():
     st.set_page_config(page_title="JMCalendar", page_icon=":house:")
@@ -20,7 +21,7 @@ def main():
         "forgot_password": forgot_password_page,
         "signup": signup_page,
         "reset_password": reset_password_page,
-        "home": lambda: st.title("JMCalendar (there's no home page yet, still working on it)"),
+        "home": home_page
     }
     page = pages.get(st.session_state.page)
     if page:
