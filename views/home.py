@@ -13,7 +13,17 @@ def home_page():
             st.session_state.availability = set()
     if "week_offset" not in st.session_state:
         st.session_state.week_offset = 0
+        
+    calendar(user_id)
 
+    if st.button("Sign out", use_container_width=True):
+        st.session_state.user = None
+        st.session_state.page = "landing"
+        st.session_state.week_offset = 0
+        st.session_state.pop("availability", None)
+        st.rerun()
+
+def calendar(user_id):
     st.title("My Availability")
     st.caption("Click a cell to toggle your availability for that time slot.")
 
@@ -79,7 +89,7 @@ def home_page():
 
     week_dates = {d.isoformat() for d in week_days}
 
-    col4, col5, col6 = st.columns(3)
+    col4, col5 = st.columns(2)
     with col4:
         if st.button("Clear this week", use_container_width=True):
             to_remove = {key for key in st.session_state.availability if key.split("T", 1)[0] in week_dates}
@@ -93,13 +103,6 @@ def home_page():
     with col5:
         if st.button("To current week", use_container_width=True):
             st.session_state.week_offset = 0
-            st.rerun()
-    with col6:
-        if st.button("Sign out", use_container_width=True):
-            st.session_state.user = None
-            st.session_state.page = "landing"
-            st.session_state.week_offset = 0
-            st.session_state.pop("availability", None)
             st.rerun()
 
 def _toggle_slot(user_id, key):
