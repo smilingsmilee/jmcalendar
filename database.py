@@ -66,10 +66,18 @@ def get_band_name_from_band_id(band_id):
     result = get_client().table("bands").select("name").eq("id", band_id).execute()
     return result.data[0]["name"]
 
+def is_leader(user_id, band_id):
+    result = get_client().table("members").select("leader").eq("member_id", user_id).eq("band_id", band_id).execute()
+    return result.data[0]["leader"]
+
 def get_members_from_band_id(band_id):
-    result = get_client().table("members").select("member_id, instrument, users(name)").eq("band_id", band_id).execute()
+    result = get_client().table("members").select("member_id, instrument, leader, users(name)").eq("band_id", band_id).execute()
     return [{
         "id": row["member_id"],
         "instrument": row["instrument"],
-        "name": row["users"]["name"]
+        "name": row["users"]["name"],
+        "leader": row["leader"]
     } for row in result.data]
+
+def update_member_instrument(band_id, member_id, instrument):
+    get_client().table("members").update({"instrument": instrument}).eq("band_id", band_id).eq("member_id", member_id).execute()
