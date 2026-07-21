@@ -40,6 +40,10 @@ def add_new_user_to_database(user_id, name, email):
         "name": name,
         "email": email
     }).execute()
+    
+def add_new_band_to_database(name):
+    result = get_client().table("bands").insert({"name": name}).execute()
+    return result.data[0]["id"]
 
 def join_band(user_id, band_id, is_leader=False):
     get_client().table("members").upsert({"band_id": band_id, "member_id": user_id, "leader": is_leader}).execute()
@@ -55,13 +59,17 @@ def remove_availability(user_id, timestamp):
     get_client().table("availabilities").delete().eq("id", user_id).eq("timestamp", timestamp).execute()
 
 def get_band_ids_from_user_id(user_id):
-    rows = get_client().table("members").select("band_id").eq("member_id", user_id).execute().data
-    return [row["band_id"] for row in rows]
+    result = get_client().table("members").select("band_id").eq("member_id", user_id).execute()
+    return [row["band_id"] for row in result.data]
 
 def get_band_name_from_band_id(band_id):
     result = get_client().table("bands").select("name").eq("id", band_id).execute()
     return result.data[0]["name"]
 
-def add_new_band_to_database(name):
-    result = get_client().table("bands").insert({"name": name}).execute()
-    return result.data[0]["id"]
+def get_members_from_band_id(band_id):
+    result = get_client().table("members").select("member_id, instrument, users(name)").eq("band_id", band_id).execute()
+    return [{
+        "id": row["member_id"],
+        "instrument": row["instrument"],
+        "name": row["users"]["name"]
+    } for row in result.data]
