@@ -2,12 +2,12 @@ import streamlit as st
 from database import *
 
 def band_page():    
-    band_id = st.session_state.band_id
+    band_id = st.session_state.band.id
 
     st.session_state.is_leader = is_leader(st.session_state.user.id, band_id)
 
-    st.title(f"{st.session_state.band_name}")
-    st.code(f"{app_url}?join_band={st.session_state.band_id}")
+    st.title(f"{st.session_state.band.name}")
+    st.code(f"{app_url}?join_band={band_id}")
     st.caption("Share this link with someone to invite them to the band.")
 
     show_members(band_id)

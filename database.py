@@ -7,6 +7,11 @@ load_dotenv()
 
 app_url = os.getenv("APP_URL")
 
+class Band:
+    def __init__(self, id, name):
+        self.id = id
+        self.name = name
+
 def get_client():
     if "client" not in st.session_state:
         st.session_state.client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))

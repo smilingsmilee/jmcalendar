@@ -64,8 +64,7 @@ def handle_band_invite(band_id):
 
     try:
         join_band(st.session_state.user.id, band_id, is_leader=False)
-        st.session_state.band_id = band_id
-        st.session_state.band_name = get_band_name_from_band_id(band_id)
+        st.session_state.band = Band(id=band_id, name=get_band_name_from_band_id(band_id))
         st.session_state.page = "band"
     except Exception as e:
         st.error(f"Could not join band: {e}")

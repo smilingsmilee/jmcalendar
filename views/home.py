@@ -144,8 +144,7 @@ def show_bands(user_id):
             for band_id in band_ids:
                 band_name = get_band_name_from_band_id(band_id)
                 if st.button(f"{band_name}", key=band_id):
-                    st.session_state.band_id = band_id
-                    st.session_state.band_name = band_name
+                    st.session_state.band = Band(id=band_id, name=band_name)
                     st.session_state.page = "band"
                     st.rerun()
 
