@@ -50,3 +50,11 @@ def add_availability(user_id, timestamp):
 
 def remove_availability(user_id, timestamp):
     get_client().table("availabilities").delete().eq("id", user_id).eq("timestamp", timestamp).execute()
+
+def get_band_ids_from_user_id(user_id):
+    rows = get_client().table("members").select("band_id").eq("member_id", user_id).execute().data
+    return [row["band_id"] for row in rows]
+
+def get_band_name_from_band_id(band_id):
+    result = get_client().table("bands").select("name").eq("id", band_id).execute()
+    return result.data[0]["name"]

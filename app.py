@@ -21,7 +21,8 @@ def main():
         "forgot_password": forgot_password_page,
         "signup": signup_page,
         "reset_password": reset_password_page,
-        "home": home_page
+        "home": home_page,
+        "band": lambda: st.title("Still working on band page")
     }
     page = pages.get(st.session_state.page)
     if page:

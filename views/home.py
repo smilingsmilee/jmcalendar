@@ -15,6 +15,7 @@ def home_page():
         st.session_state.week_offset = 0
         
     calendar(user_id)
+    show_bands(user_id)
 
     if st.button("Sign out", use_container_width=True):
         st.session_state.user = None
@@ -104,6 +105,24 @@ def calendar(user_id):
         if st.button("To current week", use_container_width=True):
             st.session_state.week_offset = 0
             st.rerun()
+
+def show_bands(user_id):
+    st.title("My Bands")
+    try:
+        band_ids = get_band_ids_from_user_id(user_id)
+        if not band_ids:
+            st.info("You are not a member of any bands yet.")
+        else:
+            for band_id in band_ids:
+                band_name = get_band_name_from_band_id(band_id)
+                if st.button(f"{band_name}"):
+                    st.session_state.band_id = band_id
+                    st.session_state.band_name = band_name
+                    st.session_state.page = "band"
+                    st.rerun()
+
+    except Exception as e:
+        st.error(f"Could not load your bands: {e}")
 
 def _toggle_slot(user_id, key):
     try:
