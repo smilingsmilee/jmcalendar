@@ -58,3 +58,6 @@ def get_band_ids_from_user_id(user_id):
 def get_band_name_from_band_id(band_id):
     result = get_client().table("bands").select("name").eq("id", band_id).execute()
     return result.data[0]["name"]
+
+def join_band(user_id, band_id):
+    get_client().table("members").upsert({"band_id": band_id, "member_id": user_id, "leader": False}).execute()
