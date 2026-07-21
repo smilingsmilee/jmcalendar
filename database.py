@@ -34,12 +34,15 @@ def exchange_code_for_session(code):
 def update_password(new_password):
     return get_client().auth.update_user({"password": new_password})
 
-def add_new_user_in_database(user_id, name, email):
+def add_new_user_to_database(user_id, name, email):
     get_client().table("users").upsert({
         "id": user_id,
         "name": name,
         "email": email
     }).execute()
+
+def join_band(user_id, band_id, is_leader=False):
+    get_client().table("members").upsert({"band_id": band_id, "member_id": user_id, "leader": is_leader}).execute()
 
 def get_availability(user_id):
     result = get_client().table("availabilities").select("timestamp").eq("id", user_id).execute()
@@ -59,5 +62,6 @@ def get_band_name_from_band_id(band_id):
     result = get_client().table("bands").select("name").eq("id", band_id).execute()
     return result.data[0]["name"]
 
-def join_band(user_id, band_id):
-    get_client().table("members").upsert({"band_id": band_id, "member_id": user_id, "leader": False}).execute()
+def add_new_band_to_database(name):
+    result = get_client().table("bands").insert({"name": name}).execute()
+    return result.data[0]["id"]

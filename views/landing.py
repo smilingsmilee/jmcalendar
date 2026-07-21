@@ -86,7 +86,7 @@ def signup_page():
             try:
                 result = sign_up(email, password, name)
                 if result.user and result.user.identities:
-                    add_new_user_in_database(result.user.id, name, email)
+                    add_new_user_to_database(result.user.id, name, email)
                     st.success(
                         "Account created! Check your email to confirm your address."
                     )

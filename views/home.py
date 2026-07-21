@@ -17,13 +17,41 @@ def home_page():
     calendar(user_id)
     show_bands(user_id)
 
-    if st.button("Sign out", use_container_width=True):
-        st.session_state.user = None
-        st.session_state.page = "landing"
-        st.session_state.week_offset = 0
-        st.session_state.pop("availability", None)
-        st.rerun()
+    if "show_new_band_form" not in st.session_state:
+        st.session_state.show_new_band_form = False
 
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Create new band", use_container_width=True):
+            st.session_state.show_new_band_form = True
+
+        if st.session_state.show_new_band_form:
+            with st.form("New band"):
+                band_name = st.text_input("Name of band")
+                col1a, col1b = st.columns(2)
+                with col1a:
+                    submitted = st.form_submit_button("Create", use_container_width=True)
+                with col1b:
+                    cancelled = st.form_submit_button("Cancel", use_container_width=True)
+            if submitted:
+                try:
+                    band_id = add_new_band_to_database(band_name)
+                    join_band(user_id, band_id, is_leader=True)
+                    st.session_state.show_new_band_form = False
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Could not create band: {e}")
+            elif cancelled:
+                st.session_state.show_new_band_form = False
+                st.rerun()
+    with col2:
+        if st.button("Sign out", use_container_width=True):
+            st.session_state.user = None
+            st.session_state.page = "landing"
+            st.session_state.week_offset = 0
+            st.session_state.pop("availability", None)
+            st.rerun()
+    
 def calendar(user_id):
     st.title("My Availability")
     st.caption("Click a cell to toggle your availability for that time slot.")
