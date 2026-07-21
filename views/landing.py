@@ -29,7 +29,7 @@ def signin_page():
         except Exception as e:
             st.error(f"Sign in failed: {e}")
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("Back"):
             st.session_state.page = "landing"
@@ -37,6 +37,10 @@ def signin_page():
     with col2:
         if st.button("Forgot password?"):
             st.session_state.page = "forgot_password"
+            st.rerun()
+    with col3:
+        if st.button("Sign up as new user"):
+            st.session_state.page = "signup"
             st.rerun()
 
 def forgot_password_page():
