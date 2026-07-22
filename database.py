@@ -107,3 +107,11 @@ def get_availabilities_from_band_id(band_id):
 def get_availabilities_from_user_id(id):
     result = get_client().table("availabilities").select("timestamp").eq("id", id).execute()
     return [row["timestamp"] for row in result.data]
+
+def add_rehearsal(band_id, timestamp, member_id):
+    get_client().table("rehearsals").upsert({
+        "band_id": band_id,
+        "timestamp": timestamp,
+        "member_id": member_id,
+        "attendance": True,
+    }).execute()
