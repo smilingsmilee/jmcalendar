@@ -41,7 +41,7 @@ def show_members(band_id):
                 st.markdown(f"**{member['name']}**")
             with col4:
                 instrument = st.text_input(
-                    "",
+                    "Instrument",
                     value=member["instrument"] or "",
                     label_visibility="collapsed",
                     placeholder="Instrument",
