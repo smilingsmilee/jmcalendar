@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 from datetime import datetime, time, timedelta
 from database import *
 
@@ -64,7 +65,7 @@ def move_member(band_id, members, from_index, to_index):
 
 def show_availabilities(band_id):
     st.subheader("Availability")
-    st.caption("Click a time to select it, then confirm to schedule the rehearsals.")
+    st.caption("Select times in the grid, then confirm to schedule the rehearsals.")
 
     members = get_members_from_band_id(band_id)
     if not members:
@@ -76,66 +77,67 @@ def show_availabilities(band_id):
     if "rehearsal_date_slots" not in st.session_state:
         st.session_state.rehearsal_date_slots = [0]
         st.session_state.rehearsal_date_next_id = 1
-    if "selected_rehearsal_slots" not in st.session_state:
-        st.session_state.selected_rehearsal_slots = {}
-    selected_slots = st.session_state.selected_rehearsal_slots.setdefault(band_id, set())
 
     slots = st.session_state.rehearsal_date_slots
-    widths = [1] + [1] * len(members)
     kept_slots = []
     last_date_value = None
+    all_selected_timestamps = set()
+    grid_keys = []
 
     for slot_id in slots:
         col1, col2 = st.columns([1, 4])
         with col1:
             date_value = st.date_input("Date", value=None, format="DD/MM/YYYY", key=f"rehearsal_date_{slot_id}")
-            time_range = (time(hour=10), time(hour=21))
-            if date_value is not None:
-                time_range = st.slider(
-                    "Time range",
-                    min_value=time(hour=10),
-                    max_value=time(hour=21),
-                    value=time_range,
-                    step=timedelta(hours=1),
-                    key=f"rehearsal_time_range_{slot_id}",
-                )
         with col2:
             if date_value is not None:
-                start_time, end_time = time_range
                 st.markdown(f"**{date_value.strftime('%a %d %b')}**")
-                header_cols = st.columns(widths)
-                header_cols[0].write("")
-                for col, member in zip(header_cols[1:], members):
-                    col.markdown(f"**{member['name']}**")
-                    if member["instrument"]:
-                        col.caption(member["instrument"])
-                for slot in [time(hour=h) for h in range(start_time.hour, end_time.hour+1)]:
-                    timestamp = datetime.combine(date_value, slot).isoformat()
-                    available_ids = band_availabilities.get(timestamp, [])
-                    is_selected = timestamp in selected_slots
-                    row_cols = st.columns(widths)
-                    with row_cols[0]:
-                        if st.button(
-                            slot.strftime("%I %p").lstrip("0"),
-                            key=f"select_{slot_id}_{timestamp}",
-                            type="primary" if is_selected else "secondary",
-                            use_container_width=True,
-                        ):
-                            if is_selected:
-                                selected_slots.discard(timestamp)
-                            else:
-                                selected_slots.add(timestamp)
-                            st.rerun()
-                    for col, member in zip(row_cols[1:], members):
-                        col.markdown("✓" if member["id"] in available_ids else "")
+
+                hours = [time(hour=h) for h in range(10, 22)]
+                timestamps = [datetime.combine(date_value, hour).isoformat() for hour in hours]
+                time_labels = [hour.strftime("%I %p").lstrip("0") for hour in hours]
+                member_labels = [
+                    f"{member['name']} ({member['instrument']})" if member["instrument"] else member["name"]
+                    for member in members
+                ]
+
+                grid = pd.DataFrame(
+                    {
+                        ts: [
+                            "available" if member["id"] in band_availabilities.get(ts, []) else "unavailable"
+                            for member in members
+                        ]
+                        for ts in timestamps
+                    },
+                    index=member_labels,
+                )
+
+                styled_grid = grid.style.map(
+                    lambda status: f"background-color: {'#1e8e3e' if status == 'available' else '#d93025'}; color: transparent"
+                )
+
+                grid_key = f"avail_grid_{slot_id}"
+                grid_keys.append(grid_key)
+                event = st.dataframe(
+                    styled_grid,
+                    column_config={
+                        ts: st.column_config.Column(label=label, width=50)
+                        for ts, label in zip(timestamps, time_labels)
+                    },
+                    use_container_width=True,
+                    hide_index=False,
+                    on_select="rerun",
+                    selection_mode="multi-column",
+                    key=grid_key,
+                )
+                all_selected_timestamps.update(event.selection.columns)
 
         last_date_value = date_value
         if date_value is not None:
             kept_slots.append(slot_id)
 
-    if selected_slots:
+    if all_selected_timestamps:
         st.caption("Selected:")
-        for start, end in merge_rehearsal_ranges(selected_slots):
+        for start, end in merge_rehearsal_ranges(all_selected_timestamps):
             start_str = start.strftime("%I %p").lstrip("0")
             end_str = end.strftime("%I %p").lstrip("0")
             st.markdown(f"**{start.strftime('%a %d %b')}, {start_str} - {end_str}**")
@@ -144,15 +146,17 @@ def show_availabilities(band_id):
         with col_confirm:
             if st.button("Confirm rehearsals", use_container_width=True):
                 try:
-                    for timestamp in selected_slots:
+                    for timestamp in all_selected_timestamps:
                         add_rehearsal(band_id, timestamp, st.session_state.user.id)
-                    st.session_state.selected_rehearsal_slots[band_id] = set()
+                    for grid_key in grid_keys:
+                        st.session_state[grid_key] = {"selection": {"rows": []}}
                     st.rerun()
                 except Exception as e:
                     st.error(f"Could not schedule rehearsals: {e}")
         with col_clear:
             if st.button("Clear selection", use_container_width=True):
-                st.session_state.selected_rehearsal_slots[band_id] = set()
+                for grid_key in grid_keys:
+                    st.session_state[grid_key] = {"selection": {"rows": []}}
                 st.rerun()
 
     if last_date_value is not None:
