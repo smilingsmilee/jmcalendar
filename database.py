@@ -90,3 +90,20 @@ def update_member_instrument(band_id, member_id, instrument):
 def reorder_band_members(band_id, ordered_member_ids):
     for index, member_id in enumerate(ordered_member_ids):
         get_client().table("members").update({"order": index}).eq("band_id", band_id).eq("member_id", member_id).execute()
+
+def get_availabilities_from_band_id(band_id):
+    members = get_members_from_band_id(band_id)
+    band_availabilities = {}
+    for member in members:
+        user_id = member["id"]
+        availabilities = get_availabilities_from_user_id(user_id)
+        for timestamp in availabilities:
+            if timestamp not in band_availabilities:
+                band_availabilities[timestamp] = [user_id]
+            else:
+                band_availabilities[timestamp].append(user_id)
+    return band_availabilities
+
+def get_availabilities_from_user_id(id):
+    result = get_client().table("availabilities").select("timestamp").eq("id", id).execute()
+    return [row["timestamp"] for row in result.data]
