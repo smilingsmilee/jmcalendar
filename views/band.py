@@ -79,10 +79,14 @@ def show_availabilities(band_id):
         st.session_state.rehearsal_date_next_id = 1
 
     slots = st.session_state.rehearsal_date_slots
+
+    if st.session_state.pop("clear_availability_selection", False):
+        for slot_id in slots:
+            st.session_state[f"avail_grid_{slot_id}"] = {"selection": {"rows": [], "columns": [], "cells": []}}
+
     kept_slots = []
     last_date_value = None
     all_selected_timestamps = set()
-    grid_keys = []
 
     for slot_id in slots:
         col1, col2 = st.columns([1, 4])
@@ -116,7 +120,6 @@ def show_availabilities(band_id):
                 )
 
                 grid_key = f"avail_grid_{slot_id}"
-                grid_keys.append(grid_key)
                 event = st.dataframe(
                     styled_grid,
                     column_config={
@@ -148,15 +151,13 @@ def show_availabilities(band_id):
                 try:
                     for timestamp in all_selected_timestamps:
                         add_rehearsal(band_id, timestamp, st.session_state.user.id)
-                    for grid_key in grid_keys:
-                        st.session_state[grid_key] = {"selection": {"rows": []}}
+                    st.session_state.clear_availability_selection = True
                     st.rerun()
                 except Exception as e:
                     st.error(f"Could not schedule rehearsals: {e}")
         with col_clear:
             if st.button("Clear selection", use_container_width=True):
-                for grid_key in grid_keys:
-                    st.session_state[grid_key] = {"selection": {"rows": []}}
+                st.session_state.clear_availability_selection = True
                 st.rerun()
 
     if last_date_value is not None:
