@@ -29,11 +29,17 @@ def show_members(band_id):
             else:
                 st.markdown(f"**{member['name']}**")
     else:
-        for member in members:
-            col1, col2 = st.columns([1, 2])
+        for index, member in enumerate(members):
+            col1, col2, col3, col4 = st.columns([1, 1, 5, 10])
             with col1:
-                st.markdown(f"**{member['name']}**")
+                if st.button("↑", key=f"up_{member['id']}", disabled=index == 0):
+                    move_member(band_id, members, index, index - 1)
             with col2:
+                if st.button("↓", key=f"down_{member['id']}", disabled=index == len(members) - 1):
+                    move_member(band_id, members, index, index + 1)
+            with col3:
+                st.markdown(f"**{member['name']}**")
+            with col4:
                 instrument = st.text_input(
                     "",
                     value=member["instrument"] or "",
@@ -46,7 +52,12 @@ def show_members(band_id):
                     st.rerun()
                 except Exception as e:
                     st.error(f"Could not update {member['name']}'s instrument: {e}")
-    # TODO: allow band leader to reorder members
+
+def move_member(band_id, members, from_index, to_index):
+    ids = [member["id"] for member in members]
+    ids[from_index], ids[to_index] = ids[to_index], ids[from_index]
+    reorder_band_members(band_id, ids)
+    st.rerun()
 
 def show_upcoming_rehearsals():
     pass
