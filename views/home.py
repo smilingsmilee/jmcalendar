@@ -22,7 +22,7 @@ def home_page():
 
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Create new band", use_container_width=True):
+        if st.button("Create new band", width='stretch'):
             st.session_state.show_new_band_form = True
 
         if st.session_state.show_new_band_form:
@@ -30,9 +30,9 @@ def home_page():
                 band_name = st.text_input("Name of band")
                 col1a, col1b = st.columns(2)
                 with col1a:
-                    submitted = st.form_submit_button("Create", use_container_width=True)
+                    submitted = st.form_submit_button("Create", width='stretch')
                 with col1b:
-                    cancelled = st.form_submit_button("Cancel", use_container_width=True)
+                    cancelled = st.form_submit_button("Cancel", width='stretch')
             if submitted:
                 try:
                     band_id = add_new_band_to_database(band_name)
@@ -45,7 +45,7 @@ def home_page():
                 st.session_state.show_new_band_form = False
                 st.rerun()
     with col2:
-        if st.button("Sign out", use_container_width=True):
+        if st.button("Sign out", width='stretch'):
             st.session_state.user = None
             st.session_state.page = "landing"
             st.session_state.week_offset = 0
@@ -62,7 +62,7 @@ def calendar(user_id):
 
     col1, col2, col3 = st.columns([1, 3, 1])
     with col1:
-        if st.button("← Previous week", use_container_width=True):
+        if st.button("← Previous week", width='stretch'):
             st.session_state.week_offset -= 1
             st.rerun()
     with col2:
@@ -85,7 +85,7 @@ def calendar(user_id):
                 unsafe_allow_html=True
             )
     with col3:
-        if st.button("Next week →", use_container_width=True):
+        if st.button("Next week →", width='stretch'):
             st.session_state.week_offset += 1
             st.rerun()
 
@@ -113,14 +113,14 @@ def calendar(user_id):
                     type="primary" if selected else "secondary",
                     on_click=_toggle_slot,
                     args=(user_id, key),
-                    use_container_width=True,
+                    width='stretch',
                 )
 
     week_dates = {d.isoformat() for d in week_days}
 
     col4, col5 = st.columns(2)
     with col4:
-        if st.button("Clear this week", use_container_width=True):
+        if st.button("Clear this week", width='stretch'):
             to_remove = {key for key in st.session_state.availability if key.split("T", 1)[0] in week_dates}
             try:
                 for key in to_remove:
@@ -130,7 +130,7 @@ def calendar(user_id):
                 st.error(f"Could not clear this week: {e}")
             st.rerun()
     with col5:
-        if st.button("To current week", use_container_width=True):
+        if st.button("To current week", width='stretch'):
             st.session_state.week_offset = 0
             st.rerun()
 

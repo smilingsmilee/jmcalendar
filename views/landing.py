@@ -5,11 +5,11 @@ def landing_page():
     st.title("JMCalendar")
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Sign In", use_container_width=True):
+        if st.button("Sign In", width='stretch'):
             st.session_state.page = "signin"
             st.rerun()
     with col2:
-        if st.button("Sign Up", use_container_width=True):
+        if st.button("Sign Up", width='stretch'):
             st.session_state.page = "signup"
             st.rerun()
 

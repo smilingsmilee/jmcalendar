@@ -126,7 +126,7 @@ def show_availabilities(band_id):
                         ts: st.column_config.Column(label=label, width=50)
                         for ts, label in zip(timestamps, time_labels)
                     },
-                    use_container_width=True,
+                    width='stretch',
                     hide_index=False,
                     on_select="rerun",
                     selection_mode="multi-column",
@@ -147,7 +147,7 @@ def show_availabilities(band_id):
 
         col_confirm, col_clear = st.columns(2)
         with col_confirm:
-            if st.button("Confirm rehearsals", use_container_width=True):
+            if st.button("Confirm rehearsals", width='stretch'):
                 try:
                     for timestamp in all_selected_timestamps:
                         add_rehearsal(band_id, timestamp, st.session_state.user.id)
@@ -156,7 +156,7 @@ def show_availabilities(band_id):
                 except Exception as e:
                     st.error(f"Could not schedule rehearsals: {e}")
         with col_clear:
-            if st.button("Clear selection", use_container_width=True):
+            if st.button("Clear selection", width='stretch'):
                 st.session_state.clear_availability_selection = True
                 st.rerun()
 
@@ -220,7 +220,7 @@ def show_upcoming_rehearsals(band_id):
                 "✅ I'll be there",
                 key=f"attend_yes_{hours[0]}",
                 type="primary" if my_attendance is True else "secondary",
-                use_container_width=True,
+                width='stretch',
             ):
                 new_attendance = None if my_attendance is True else True
                 for ts in hours:
@@ -232,7 +232,7 @@ def show_upcoming_rehearsals(band_id):
                 "❌ Can't make it",
                 key=f"attend_no_{hours[0]}",
                 type="primary" if my_attendance is False else "secondary",
-                use_container_width=True,
+                width='stretch',
             ):
                 new_attendance = None if my_attendance is False else False
                 for ts in hours:
@@ -250,7 +250,7 @@ def show_upcoming_rehearsals(band_id):
                 st.warning("Delete this rehearsal for everyone?")
                 col1, col2 = st.columns(2)
                 with col1:
-                    if st.button("Yes, delete", key=f"{confirm_key}_yes", use_container_width=True):
+                    if st.button("Yes, delete", key=f"{confirm_key}_yes", width='stretch'):
                         for ts in hours:
                             for member in members:
                                 if attendance_by_member.get(member["id"]) is True:
@@ -259,11 +259,11 @@ def show_upcoming_rehearsals(band_id):
                         st.session_state.pop(confirm_key, None)
                         st.rerun()
                 with col2:
-                    if st.button("Cancel", key=f"{confirm_key}_no", use_container_width=True):
+                    if st.button("Cancel", key=f"{confirm_key}_no", width='stretch'):
                         st.session_state.pop(confirm_key, None)
                         st.rerun()
             else:
-                if st.button("Delete rehearsal", key=f"delete_{hours[0]}", use_container_width=True):
+                if st.button("Delete rehearsal", key=f"delete_{hours[0]}", width='stretch'):
                     st.session_state[confirm_key] = True
                     st.rerun()
 
