@@ -244,4 +244,27 @@ def show_upcoming_rehearsals(band_id):
             icon = "✅" if status is True else "❌" if status is False else "⏳"
             st.write(f"{icon} {member['name']}")
 
+        if st.session_state.is_leader:
+            confirm_key = f"confirm_delete_{hours[0]}"
+            if st.session_state.get(confirm_key):
+                st.warning("Delete this rehearsal for everyone?")
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("Yes, delete", key=f"{confirm_key}_yes", use_container_width=True):
+                        for ts in hours:
+                            for member in members:
+                                if attendance_by_member.get(member["id"]) is True:
+                                    add_availability(member["id"], ts)
+                            delete_rehearsal(band_id, ts)
+                        st.session_state.pop(confirm_key, None)
+                        st.rerun()
+                with col2:
+                    if st.button("Cancel", key=f"{confirm_key}_no", use_container_width=True):
+                        st.session_state.pop(confirm_key, None)
+                        st.rerun()
+            else:
+                if st.button("Delete rehearsal", key=f"delete_{hours[0]}", use_container_width=True):
+                    st.session_state[confirm_key] = True
+                    st.rerun()
+
         st.divider()
