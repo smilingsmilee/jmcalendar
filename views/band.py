@@ -239,10 +239,9 @@ def show_upcoming_rehearsals(band_id):
                     set_rehearsal_attendance(band_id, ts, st.session_state.user.id, new_attendance)
                 st.rerun()
 
-        if st.session_state.is_leader:
-            for member in members:
-                status = attendance_by_member.get(member["id"])
-                icon = "✅" if status is True else "❌" if status is False else "⏳"
-                st.write(f"{icon} {member['name']}")
+        for member in members:
+            status = attendance_by_member.get(member["id"])
+            icon = "✅" if status is True else "❌" if status is False else "⏳"
+            st.write(f"{icon} {member['name']}")
 
         st.divider()
