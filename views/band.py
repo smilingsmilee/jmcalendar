@@ -225,6 +225,7 @@ def show_upcoming_rehearsals(band_id):
                 new_attendance = None if my_attendance is True else True
                 for ts in hours:
                     set_rehearsal_attendance(band_id, ts, st.session_state.user.id, new_attendance)
+                    remove_availability(st.session_state.user.id, ts)
                 st.rerun()
         with col2:
             if st.button(
