@@ -115,3 +115,18 @@ def add_rehearsal(band_id, timestamp, member_id):
         "member_id": member_id,
         "attendance": True,
     }).execute()
+
+def get_rehearsals_from_band_id(band_id):
+    result = get_client().table("rehearsals").select("timestamp, member_id, attendance").eq("band_id", band_id).execute()
+    rehearsals = {}
+    for row in result.data:
+        rehearsals.setdefault(row["timestamp"], {})[row["member_id"]] = row["attendance"]
+    return rehearsals
+
+def set_rehearsal_attendance(band_id, timestamp, member_id, attendance):
+    get_client().table("rehearsals").upsert({
+        "band_id": band_id,
+        "timestamp": timestamp,
+        "member_id": member_id,
+        "attendance": attendance,
+    }).execute()

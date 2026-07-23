@@ -186,4 +186,62 @@ def merge_rehearsal_ranges(timestamps):
     return ranges
 
 def show_upcoming_rehearsals(band_id):
-    pass
+    st.subheader("Upcoming Rehearsals")
+
+    members = get_members_from_band_id(band_id)
+    rehearsal_attendance = get_rehearsals_from_band_id(band_id)
+
+    now = datetime.now()
+    upcoming_timestamps = [
+        ts for ts in rehearsal_attendance if datetime.fromisoformat(ts) >= now
+    ]
+
+    if not upcoming_timestamps:
+        st.write("No upcoming rehearsals.")
+        return
+
+    for start, end in merge_rehearsal_ranges(upcoming_timestamps):
+        hours = []
+        curr = start
+        while curr < end:
+            hours.append(curr.isoformat())
+            curr += timedelta(hours=1)
+
+        attendance_by_member = rehearsal_attendance.get(hours[0], {})
+        my_attendance = attendance_by_member.get(st.session_state.user.id)
+
+        start_str = start.strftime("%I %p").lstrip("0")
+        end_str = end.strftime("%I %p").lstrip("0")
+        st.markdown(f"**{start.strftime('%a %d %b')}, {start_str} - {end_str}**")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button(
+                "✅ I'll be there",
+                key=f"attend_yes_{hours[0]}",
+                type="primary" if my_attendance is True else "secondary",
+                use_container_width=True,
+            ):
+                new_attendance = None if my_attendance is True else True
+                for ts in hours:
+                    set_rehearsal_attendance(band_id, ts, st.session_state.user.id, new_attendance)
+                st.rerun()
+        with col2:
+            if st.button(
+                "❌ Can't make it",
+                key=f"attend_no_{hours[0]}",
+                type="primary" if my_attendance is False else "secondary",
+                use_container_width=True,
+            ):
+                new_attendance = None if my_attendance is False else False
+                for ts in hours:
+                    set_rehearsal_attendance(band_id, ts, st.session_state.user.id, new_attendance)
+                st.rerun()
+
+        if st.session_state.is_leader:
+            for member in members:
+                status = attendance_by_member.get(member["id"])
+                icon = "✅" if status is True else "❌" if status is False else "⏳"
+                st.write(f"{icon} {member['name']}")
+
+        st.divider()
