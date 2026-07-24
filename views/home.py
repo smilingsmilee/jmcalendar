@@ -169,19 +169,26 @@ def show_upcoming_rehearsals(user_id):
         return
 
     timestamps_by_band = {}
+    location_by_timestamp = {}
     for r in upcoming:
         timestamps_by_band.setdefault(r["band_id"], []).append(r["timestamp"])
+        if r.get("location"):
+            location_by_timestamp[r["timestamp"]] = r["location"]
 
     ranges = []
     for band_id, timestamps in timestamps_by_band.items():
         band_name = get_band_name_from_band_id(band_id)
         for start, end in merge_rehearsal_ranges(timestamps):
-            ranges.append((start, end, band_name))
+            location = location_by_timestamp.get(start.isoformat())
+            ranges.append((start, end, band_name, location))
 
-    for start, end, band_name in sorted(ranges):
+    for start, end, band_name, location in sorted(ranges, key=lambda r: (r[0], r[1], r[2])):
         start_str = start.strftime("%I %p").lstrip("0")
         end_str = end.strftime("%I %p").lstrip("0")
-        st.markdown(f"**{band_name} — {start.strftime('%a %d %b')}, {start_str} - {end_str}**")
+        if location is not None:
+            st.markdown(f"**{start.strftime('%a %d %b')}, {start_str} - {end_str} @ {location}**")
+        else:
+            st.markdown(f"**{start.strftime('%a %d %b')}, {start_str} - {end_str}**")
 
     st.divider()
 

@@ -145,19 +145,27 @@ def show_availabilities(band_id):
             end_str = end.strftime("%I %p").lstrip("0")
             st.markdown(f"**{start.strftime('%a %d %b')}, {start_str} - {end_str}**")
 
+        location = st.text_input(
+            "Location",
+            key="rehearsal_location_input",
+            placeholder="e.g. Practice Room 2 (optional)",
+        )
+
         col_confirm, col_clear = st.columns(2)
         with col_confirm:
             if st.button("Confirm rehearsals", width='stretch'):
                 try:
                     for timestamp in all_selected_timestamps:
-                        add_rehearsal(band_id, timestamp, st.session_state.user.id)
+                        add_rehearsal(band_id, timestamp, st.session_state.user.id, location or None)
                     st.session_state.clear_availability_selection = True
+                    st.session_state.pop("rehearsal_location_input", None)
                     st.rerun()
                 except Exception as e:
                     st.error(f"Could not schedule rehearsals: {e}")
         with col_clear:
             if st.button("Clear selection", width='stretch'):
                 st.session_state.clear_availability_selection = True
+                st.session_state.pop("rehearsal_location_input", None)
                 st.rerun()
 
     if last_date_value is not None:
@@ -190,6 +198,7 @@ def show_upcoming_rehearsals(band_id):
 
     members = get_members_from_band_id(band_id)
     rehearsal_attendance = get_rehearsals_from_band_id(band_id)
+    rehearsal_locations = get_rehearsal_locations_from_band_id(band_id)
 
     now = datetime.now()
     upcoming_timestamps = [
@@ -212,7 +221,42 @@ def show_upcoming_rehearsals(band_id):
 
         start_str = start.strftime("%I %p").lstrip("0")
         end_str = end.strftime("%I %p").lstrip("0")
-        st.markdown(f"**{start.strftime('%a %d %b')}, {start_str} - {end_str}**")
+        location = rehearsal_locations.get(hours[0])
+        if location is not None:
+            st.markdown(f"**{start.strftime('%a %d %b')}, {start_str} - {end_str} @ {location}**")
+        else:
+            st.markdown(f"**{start.strftime('%a %d %b')}, {start_str} - {end_str}**")
+
+        if st.session_state.is_leader:
+            edit_location_key = f"edit_location_{hours[0]}"
+            if st.session_state.get(edit_location_key):
+                new_location = st.text_input(
+                    "Location",
+                    value=location or "",
+                    key=f"location_input_{hours[0]}",
+                    label_visibility="collapsed",
+                    placeholder="e.g. Practice Room 2",
+                )
+                col_save, col_cancel = st.columns(2)
+                with col_save:
+                    if st.button("Save", key=f"{edit_location_key}_save", width='stretch'):
+                        try:
+                            update_rehearsal_location(band_id, hours, new_location or None)
+                            st.session_state.pop(edit_location_key, None)
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Could not update location: {e}")
+                with col_cancel:
+                    if st.button("Cancel", key=f"{edit_location_key}_cancel", width='stretch'):
+                        st.session_state.pop(edit_location_key, None)
+                        st.rerun()
+            else:
+                if st.button(
+                    "Edit location" if location else "Add location",
+                    key=f"{edit_location_key}_toggle",
+                ):
+                    st.session_state[edit_location_key] = True
+                    st.rerun()
 
         col1, col2 = st.columns(2)
         with col1:

@@ -108,13 +108,16 @@ def get_availabilities_from_user_id(id):
     result = get_client().table("availabilities").select("timestamp").eq("id", id).execute()
     return [row["timestamp"] for row in result.data]
 
-def add_rehearsal(band_id, timestamp, member_id):
-    get_client().table("rehearsals").upsert({
+def add_rehearsal(band_id, timestamp, member_id, location=None):
+    rehearsal = {
         "band_id": band_id,
         "timestamp": timestamp,
         "member_id": member_id,
         "attendance": True,
-    }).execute()
+    }
+    if location is not None:
+        rehearsal["location"] = location
+    get_client().table("rehearsals").upsert(rehearsal).execute()
 
 def get_rehearsals_from_band_id(band_id):
     result = get_client().table("rehearsals").select("timestamp, member_id, attendance").eq("band_id", band_id).execute()
@@ -123,17 +126,32 @@ def get_rehearsals_from_band_id(band_id):
         rehearsals.setdefault(row["timestamp"], {})[row["member_id"]] = row["attendance"]
     return rehearsals
 
+def get_rehearsal_locations_from_band_id(band_id):
+    result = get_client().table("rehearsals").select("timestamp, location").eq("band_id", band_id).execute()
+    return {row["timestamp"]: row["location"] for row in result.data if row["location"]}
+
+def get_rehearsal_location(band_id, timestamp):
+    result = get_client().table("rehearsals").select("location").eq("band_id", band_id).eq("timestamp", timestamp).limit(1).execute()
+    return result.data[0]["location"] if result.data else None
+
 def set_rehearsal_attendance(band_id, timestamp, member_id, attendance):
-    get_client().table("rehearsals").upsert({
+    rehearsal = {
         "band_id": band_id,
         "timestamp": timestamp,
         "member_id": member_id,
         "attendance": attendance,
-    }).execute()
-    
+    }
+    location = get_rehearsal_location(band_id, timestamp)
+    if location is not None:
+        rehearsal["location"] = location
+    get_client().table("rehearsals").upsert(rehearsal).execute()
+
+def update_rehearsal_location(band_id, timestamps, location):
+    get_client().table("rehearsals").update({"location": location}).eq("band_id", band_id).in_("timestamp", timestamps).execute()
+
 def delete_rehearsal(band_id, timestamp):
     get_client().table("rehearsals").delete().eq("band_id", band_id).eq("timestamp", timestamp).execute()
-    
+
 def get_rehearsals_from_user_id(user_id):
-    result = get_client().table("rehearsals").select("timestamp, band_id").eq("member_id", user_id).eq("attendance", True).execute()
+    result = get_client().table("rehearsals").select("timestamp, band_id, location").eq("member_id", user_id).eq("attendance", True).execute()
     return result.data
