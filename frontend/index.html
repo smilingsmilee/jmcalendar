@@ -1,0 +1,207 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  :root {
+    --accent: #1e8e3e;
+    --bg: #ffffff;
+    --panel-bg: #f0f2f6;
+    --text: #31333f;
+    --border: rgba(49, 51, 63, 0.15);
+    --font: "Source Sans Pro", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    font-family: var(--font);
+    color: var(--text);
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  #root { padding: 2px; }
+  .grid {
+    display: grid;
+    grid-template-columns: 56px repeat(var(--cols), 1fr);
+    gap: 3px;
+    touch-action: none;
+  }
+  .cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    line-height: 1.2;
+    text-align: center;
+    padding: 4px 2px;
+    border-radius: 4px;
+    min-width: 0;
+  }
+  .corner { background: transparent; }
+  .header {
+    background: var(--panel-bg);
+    font-weight: 600;
+    white-space: pre-line;
+    padding: 6px 2px;
+  }
+  .rowlabel {
+    background: var(--panel-bg);
+    justify-content: flex-end;
+    padding-right: 6px;
+    white-space: nowrap;
+  }
+  .slot {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    min-height: 26px;
+  }
+  .slot:hover {
+    filter: brightness(0.95);
+  }
+  .slot.on {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+(function () {
+  var MESSAGE_TYPE = {
+    COMPONENT_READY: "streamlit:componentReady",
+    SET_COMPONENT_VALUE: "streamlit:setComponentValue",
+    SET_FRAME_HEIGHT: "streamlit:setFrameHeight",
+    RENDER: "streamlit:render",
+  };
+
+  function sendToStreamlit(type, data) {
+    var payload = Object.assign({ isStreamlitMessage: true, type: type }, data || {});
+    window.parent.postMessage(payload, "*");
+  }
+
+  function setFrameHeight() {
+    var height = document.documentElement.scrollHeight;
+    sendToStreamlit(MESSAGE_TYPE.SET_FRAME_HEIGHT, { height: height });
+  }
+
+  function setComponentValue(value) {
+    sendToStreamlit(MESSAGE_TYPE.SET_COMPONENT_VALUE, { value: value, dataType: "json" });
+  }
+
+  var root = document.getElementById("root");
+  var days = [];
+  var hours = [];
+  var values = [];
+  var dragging = false;
+  var paintValue = true;
+
+  function applyTheme(theme) {
+    if (!theme) return;
+    var style = document.documentElement.style;
+    if (theme.backgroundColor) style.setProperty("--bg", theme.backgroundColor);
+    if (theme.secondaryBackgroundColor) style.setProperty("--panel-bg", theme.secondaryBackgroundColor);
+    if (theme.textColor) style.setProperty("--text", theme.textColor);
+    if (theme.font) style.setProperty("--font", theme.font);
+  }
+
+  function cellAt(row, col) {
+    return root.querySelector('.slot[data-row="' + row + '"][data-col="' + col + '"]');
+  }
+
+  function setCell(row, col, on) {
+    if (values[row][col] === on) return;
+    values[row][col] = on;
+    var el = cellAt(row, col);
+    if (el) el.classList.toggle("on", on);
+  }
+
+  function renderGrid(args) {
+    days = args.days || [];
+    hours = args.hours || [];
+    values = (args.values || []).map(function (row) { return row.slice(); });
+
+    root.innerHTML = "";
+    var grid = document.createElement("div");
+    grid.className = "grid";
+    grid.style.setProperty("--cols", days.length);
+
+    var corner = document.createElement("div");
+    corner.className = "cell corner";
+    grid.appendChild(corner);
+
+    days.forEach(function (label) {
+      var h = document.createElement("div");
+      h.className = "cell header";
+      h.textContent = label;
+      grid.appendChild(h);
+    });
+
+    hours.forEach(function (hourLabel, row) {
+      var rowLabel = document.createElement("div");
+      rowLabel.className = "cell rowlabel";
+      rowLabel.textContent = hourLabel;
+      grid.appendChild(rowLabel);
+
+      days.forEach(function (_, col) {
+        var cell = document.createElement("div");
+        cell.className = "cell slot" + (values[row][col] ? " on" : "");
+        cell.dataset.row = row;
+        cell.dataset.col = col;
+        grid.appendChild(cell);
+      });
+    });
+
+    root.appendChild(grid);
+    requestAnimationFrame(setFrameHeight);
+  }
+
+  function findSlotFromPoint(x, y) {
+    var el = document.elementFromPoint(x, y);
+    return el ? el.closest(".slot") : null;
+  }
+
+  root.addEventListener("pointerdown", function (e) {
+    var slot = e.target.closest(".slot");
+    if (!slot) return;
+    e.preventDefault();
+    var row = +slot.dataset.row;
+    var col = +slot.dataset.col;
+    dragging = true;
+    paintValue = !values[row][col];
+    setCell(row, col, paintValue);
+  });
+
+  document.addEventListener(
+    "pointermove",
+    function (e) {
+      if (!dragging) return;
+      e.preventDefault();
+      var slot = findSlotFromPoint(e.clientX, e.clientY);
+      if (!slot) return;
+      setCell(+slot.dataset.row, +slot.dataset.col, paintValue);
+    },
+    { passive: false }
+  );
+
+  document.addEventListener("pointerup", function () {
+    if (!dragging) return;
+    dragging = false;
+    var nonce = Date.now() + ":" + Math.random();
+    setComponentValue({ values: values, nonce: nonce });
+  });
+
+  window.addEventListener("message", function (event) {
+    if (!event.data || event.data.type !== MESSAGE_TYPE.RENDER) return;
+    applyTheme(event.data.theme);
+    renderGrid(event.data.args);
+  });
+
+  sendToStreamlit(MESSAGE_TYPE.COMPONENT_READY, { apiVersion: 1 });
+})();
+</script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 import streamlit as st
 from datetime import datetime, timedelta, time
 from database import *
+from frontend.availability_grid import availability_grid
 
 def home_page():
     user_id = st.session_state.user.id
@@ -56,7 +57,7 @@ def home_page():
     
 def calendar(user_id):
     st.title("My Availability")
-    st.caption("Click a cell to toggle your availability for that time slot.")
+    st.caption("Click or drag across cells to toggle your availability for that time slot.")
 
     today = datetime.now().date()
     monday = today - timedelta(days=today.weekday()) + timedelta(weeks=st.session_state.week_offset)
@@ -91,32 +92,34 @@ def calendar(user_id):
             st.session_state.week_offset += 1
             st.rerun()
 
-    header_cols = st.columns([1] * 8)
-    header_cols[0].write("")
-    for col, day in zip(header_cols[1:], week_days):
-        col.markdown(
-            f"<div style='text-align:center;'><b>{day.strftime('%a')}</b><br>{day.strftime('%d %b')}</div>",
-            unsafe_allow_html=True,
-        )
+    hours = [time(hour=h) for h in range(10, 22)]
+    time_labels = [hour.strftime("%I %p").lstrip("0") for hour in hours]
+    day_labels = [day.strftime("%a %d %b") for day in week_days]
 
-    for slot in [time(hour=h) for h in range(10, 22)]:
-        row_cols = st.columns([1] * 8)
-        row_cols[0].markdown(
-            f"<div style='text-align:center; padding-top:0.5rem;'>{slot.strftime('%I %p').lstrip('0')}</div>",
-            unsafe_allow_html=True,
-        )
-        for col, day in zip(row_cols[1:], week_days):
-            key = datetime.combine(day, slot).isoformat()
-            selected = key in st.session_state.availability
-            with col:
-                st.button(
-                    "✓" if selected else " ",
-                    key=f"slot_{key}",
-                    type="primary" if selected else "secondary",
-                    on_click=_toggle_slot,
-                    args=(user_id, key),
-                    width='stretch',
-                )
+    values = [
+        [datetime.combine(day, hour).isoformat() in st.session_state.availability for day in week_days]
+        for hour in hours
+    ]
+
+    grid_key = f"avail_grid_{monday.isoformat()}"
+    edited = availability_grid(days=day_labels, hours=time_labels, values=values, key=grid_key)
+
+    if edited is not None:
+        for row, hour in enumerate(hours):
+            for col, day in enumerate(week_days):
+                key = datetime.combine(day, hour).isoformat()
+                was_selected = key in st.session_state.availability
+                now_selected = bool(edited[row][col])
+                if now_selected != was_selected:
+                    try:
+                        if now_selected:
+                            add_availability(user_id, key)
+                            st.session_state.availability.add(key)
+                        else:
+                            remove_availability(user_id, key)
+                            st.session_state.availability.discard(key)
+                    except Exception as e:
+                        st.error(f"Could not save availability: {e}")
 
     week_dates = {d.isoformat() for d in week_days}
 
@@ -196,14 +199,3 @@ def merge_rehearsal_ranges(timestamps):
     if start is not None:
         ranges.append((start, prev + timedelta(hours=1)))
     return ranges
-
-def _toggle_slot(user_id, key):
-    try:
-        if key not in st.session_state.availability:
-            add_availability(user_id, key)
-            st.session_state.availability.add(key)
-        else:
-            remove_availability(user_id, key)
-            st.session_state.availability.discard(key)
-    except Exception as e:
-        st.error(f"Could not save availability: {e}")
