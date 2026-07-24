@@ -44,7 +44,8 @@ def home_page():
             st.rerun()
 
     st.divider()
-    # TODO : show upcoming rehearsals
+    
+    show_upcoming_rehearsals(user_id)
 
     if st.button("Sign out", width='stretch'):
         st.session_state.user = None
@@ -151,6 +152,50 @@ def show_bands(user_id):
 
     except Exception as e:
         st.error(f"Could not load your bands: {e}")
+
+def show_upcoming_rehearsals(user_id):
+    st.subheader("Upcoming Rehearsals")
+
+    rehearsals = get_rehearsals_from_user_id(user_id)
+
+    now = datetime.now()
+    upcoming = [r for r in rehearsals if datetime.fromisoformat(r["timestamp"]) >= now]
+
+    if not upcoming:
+        st.write("No upcoming rehearsals.")
+        return
+
+    timestamps_by_band = {}
+    for r in upcoming:
+        timestamps_by_band.setdefault(r["band_id"], []).append(r["timestamp"])
+
+    ranges = []
+    for band_id, timestamps in timestamps_by_band.items():
+        band_name = get_band_name_from_band_id(band_id)
+        for start, end in merge_rehearsal_ranges(timestamps):
+            ranges.append((start, end, band_name))
+
+    for start, end, band_name in sorted(ranges):
+        start_str = start.strftime("%I %p").lstrip("0")
+        end_str = end.strftime("%I %p").lstrip("0")
+        st.markdown(f"**{band_name} — {start.strftime('%a %d %b')}, {start_str} - {end_str}**")
+
+    st.divider()
+
+def merge_rehearsal_ranges(timestamps):
+    ranges = []
+    start = prev = None
+    for dt in sorted(datetime.fromisoformat(ts) for ts in timestamps):
+        if start is None:
+            start = prev = dt
+        elif dt - prev == timedelta(hours=1):
+            prev = dt
+        else:
+            ranges.append((start, prev + timedelta(hours=1)))
+            start = prev = dt
+    if start is not None:
+        ranges.append((start, prev + timedelta(hours=1)))
+    return ranges
 
 def _toggle_slot(user_id, key):
     try:

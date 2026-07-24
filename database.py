@@ -133,3 +133,7 @@ def set_rehearsal_attendance(band_id, timestamp, member_id, attendance):
     
 def delete_rehearsal(band_id, timestamp):
     get_client().table("rehearsals").delete().eq("band_id", band_id).eq("timestamp", timestamp).execute()
+    
+def get_rehearsals_from_user_id(user_id):
+    result = get_client().table("rehearsals").select("timestamp, band_id").eq("member_id", user_id).eq("attendance", True).execute()
+    return result.data
