@@ -13,4 +13,6 @@ Just submit your availability once, and every band you're in can see when you're
 - **Language:** Python
 - **Frontend:** Streamlit
 - **Backend & Database:** Supabase
-- **Authentication:** Supabase Auth
+- **Authentication:** Telegram OIDC through Supabase Auth
+
+**Note:** Telegram login may not work when running the app on WSL. Sign in via QR code instead.

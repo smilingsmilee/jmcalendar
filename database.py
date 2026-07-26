@@ -5,8 +5,6 @@ from supabase import create_client
 
 load_dotenv()
 
-app_url = os.getenv("APP_URL")
-
 class Band:
     def __init__(self, id, name):
         self.id = id
@@ -17,34 +15,27 @@ def get_client():
         st.session_state.client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
     return st.session_state.client
 
-def sign_in(email, password):
-    return get_client().auth.sign_in_with_password({"email": email, "password": password})
-
-def sign_up(email, password, name):
-    return get_client().auth.sign_up({
-        "email": email,
-        "password": password,
-        "options": {
-            "email_redirect_to": app_url,
-            "data": {"name": name}
-        }
+def exchange_code_for_session(code, code_verifier, redirect_to):
+    return get_client().auth.exchange_code_for_session({
+        "auth_code": code,
+        "code_verifier": code_verifier,
+        "redirect_to": redirect_to,
     })
 
-def request_password_reset(email):
-    return get_client().auth.reset_password_for_email(email, options={"redirect_to": app_url})
-
-def exchange_code_for_session(code):
-    return get_client().auth.exchange_code_for_session({"auth_code": code})
-
-def update_password(new_password):
-    return get_client().auth.update_user({"password": new_password})
-
-def add_new_user_to_database(user_id, name, email):
+def ensure_user_profile(user):
+    metadata = user.user_metadata or {}
+    name = (
+        metadata.get("name")
+        or metadata.get("preferred_username")
+        or "Telegram user"
+    )
     get_client().table("users").upsert({
-        "id": user_id,
+        "id": user.id,
         "name": name,
-        "email": email
     }).execute()
+
+def sign_out(scope="local"):
+    get_client().auth.sign_out({"scope": scope})
     
 def add_new_band_to_database(name):
     result = get_client().table("bands").insert({"name": name}).execute()

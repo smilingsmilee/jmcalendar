@@ -14,7 +14,7 @@ def home_page():
             st.session_state.availability = set()
     if "week_offset" not in st.session_state:
         st.session_state.week_offset = 0
-        
+
     calendar(user_id)
     show_bands(user_id)
 
@@ -45,16 +45,39 @@ def home_page():
             st.rerun()
 
     st.divider()
-    
+
     show_upcoming_rehearsals(user_id)
 
-    if st.button("Sign out", width='stretch'):
-        st.session_state.user = None
-        st.session_state.page = "landing"
-        st.session_state.week_offset = 0
-        st.session_state.pop("availability", None)
+    sign_out_current = st.button(
+        "Sign Out",
+        width="stretch",
+        help="Sign out on this device only.",
+    )
+    sign_out_everywhere = st.button(
+        "Sign Out of All Devices",
+        width="stretch",
+        help="End all of your active sessions.",
+    )
+
+    if sign_out_current or sign_out_everywhere:
+        sign_out_failed = False
+        try:
+            sign_out(scope="global" if sign_out_everywhere else "local")
+        except Exception:
+            sign_out_failed = True
+        st.session_state.clear()
+        st.session_state.page = "signin"
+        if sign_out_failed:
+            st.session_state.auth_notice = (
+                "You were signed out on this device, but Supabase could not "
+                + (
+                    "sign you out of your other devices."
+                    if sign_out_everywhere
+                    else "end the session remotely."
+                )
+            )
         st.rerun()
-    
+
 def calendar(user_id):
     st.title("My Availability")
     st.caption("Click or drag across cells to toggle your availability for that time slot.")
