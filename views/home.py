@@ -186,9 +186,9 @@ def show_upcoming_rehearsals(user_id):
         start_str = start.strftime("%I %p").lstrip("0")
         end_str = end.strftime("%I %p").lstrip("0")
         if location is not None:
-            st.markdown(f"**{start.strftime('%a %d %b')}, {start_str} - {end_str} @ {location}**")
+            st.markdown(f"{band_name}, **{start.strftime('%a %d %b')}, {start_str} - {end_str}** @ {location}")
         else:
-            st.markdown(f"**{start.strftime('%a %d %b')}, {start_str} - {end_str}**")
+            st.markdown(f"{band_name}, **{start.strftime('%a %d %b')}, {start_str} - {end_str}**")
 
     st.divider()
 
