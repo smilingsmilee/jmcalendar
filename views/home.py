@@ -105,6 +105,7 @@ def calendar(user_id):
     edited = availability_grid(days=day_labels, hours=time_labels, values=values, key=grid_key)
 
     if edited is not None:
+        changed = False
         for row, hour in enumerate(hours):
             for col, day in enumerate(week_days):
                 key = datetime.combine(day, hour).isoformat()
@@ -118,8 +119,11 @@ def calendar(user_id):
                         else:
                             remove_availability(user_id, key)
                             st.session_state.availability.discard(key)
+                        changed = True
                     except Exception as e:
                         st.error(f"Could not save availability: {e}")
+        if changed:
+            st.rerun()
 
     week_dates = {d.isoformat() for d in week_days}
 
