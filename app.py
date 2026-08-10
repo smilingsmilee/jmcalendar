@@ -1,5 +1,9 @@
 import streamlit as st
 import os
+from types import SimpleNamespace
+import uuid
+import jwt
+import requests
 from database import *
 from telegram_auth import (
     TelegramAuthConfigurationError,
@@ -28,7 +32,10 @@ def main():
 
     code = st.query_params.get("code")
     if code:
-        authenticate_user(code, st.query_params.get("auth_state"))
+        authenticate_user(
+            code,
+            st.query_params.get("state") or st.query_params.get("auth_state"),
+        )
 
     join_band_id = st.query_params.get("join_band")
 
@@ -58,21 +65,16 @@ def main():
 def authenticate_user(code, auth_state):
     try:
         state = read_callback_state(auth_state, os.getenv("AUTH_STATE_SECRET"))
-        response = exchange_code_for_session(
-            code,
-            state["code_verifier"],
-            create_callback_url(os.getenv("APP_URL"), auth_state),
-        )
-        if response.user is None or response.session is None:
-            raise ValueError("Supabase did not return an authenticated session.")
-        ensure_user_profile(response.user)
-        st.session_state.user = response.user
+        user = exchange_telegram_code(code, state["code_verifier"], auth_state)
+        ensure_user_profile(user)
+        st.session_state.user = user
         st.session_state.page = "home"
     except (TelegramAuthConfigurationError, TelegramAuthStateError) as e:
         st.error(str(e))
         st.session_state.page = "signin"
-    except Exception:
-        st.error("Telegram sign-in could not be completed. Please try again.")
+    except Exception as e:
+        st.error("Telegram sign-in could not be completed. If this problem persists, please contact JMExco.")
+        # st.error(f"Telegram sign-in could not be completed: {e}")
         st.session_state.page = "signin"
     finally:
         st.query_params.clear()
@@ -81,6 +83,39 @@ def handle_authentication_error():
     st.query_params.clear()
     st.session_state.page = "signin"
     st.error("Telegram sign-in was cancelled or could not be completed.")
+
+
+def exchange_telegram_code(code, code_verifier, auth_state):
+    client_id = os.getenv("TELEGRAM_CLIENT_ID")
+    client_secret = os.getenv("TELEGRAM_CLIENT_SECRET")
+    callback_url = os.getenv("APP_URL")
+    token = requests.post(
+        "https://oauth.telegram.org/token",
+        data={"grant_type": "authorization_code", "code": code,
+              "redirect_uri": callback_url, "client_id": client_id,
+              "code_verifier": code_verifier},
+        auth=(client_id, client_secret), timeout=15,
+    )
+    token.raise_for_status()
+    token_data = token.json()
+    id_token = token_data.get("id_token")
+    if not id_token:
+        details = token_data.get("error_description") or token_data.get("error")
+        if not details:
+            details = ", ".join(sorted(token_data.keys())) or "empty response"
+        raise ValueError(f"Telegram did not return an ID token ({details}).")
+    signing_key = jwt.PyJWKClient("https://oauth.telegram.org/.well-known/jwks.json").get_signing_key_from_jwt(id_token)
+    claims = jwt.decode(id_token, signing_key.key, algorithms=["RS256"], audience=client_id,
+                        issuer="https://oauth.telegram.org")
+    # Existing Supabase tables use UUIDs for user IDs. Telegram's `sub` is a
+    # numeric identifier, so derive a stable UUID from it for database use.
+    user_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"telegram:{claims['sub']}"))
+    return SimpleNamespace(id=user_id, user_metadata={
+        "name": claims.get("name"),
+        "preferred_username": claims.get("preferred_username"),
+        # Temporary compatibility value while users.email remains NOT NULL.
+        "email": f"telegram_{claims['sub']}@users.invalid",
+    })
 
 def handle_band_invite(band_id):
     if st.session_state.user is None:

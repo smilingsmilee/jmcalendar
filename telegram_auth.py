@@ -7,7 +7,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from cryptography.fernet import Fernet, InvalidToken
 
 
-TELEGRAM_PROVIDER = "custom:telegram"
+TELEGRAM_AUTH_URL = "https://oauth.telegram.org/auth"
 TELEGRAM_SCOPES = "openid profile"
 AUTH_STATE_TTL_SECONDS = 10 * 60
 
@@ -21,12 +21,12 @@ class TelegramAuthStateError(ValueError):
 
 
 def create_authorization_request(
-    supabase_url,
+    telegram_client_id,
     app_url,
     state_secret,
 ):
     _require_config(
-        SUPABASE_URL=supabase_url,
+        TELEGRAM_CLIENT_ID=telegram_client_id,
         APP_URL=app_url,
         AUTH_STATE_SECRET=state_secret,
     )
@@ -41,18 +41,18 @@ def create_authorization_request(
         },
         state_secret,
     )
-    redirect_to = create_callback_url(app_url, auth_state)
-
     query = urlencode(
         {
-            "provider": TELEGRAM_PROVIDER,
-            "redirect_to": redirect_to,
-            "scopes": TELEGRAM_SCOPES,
+            "client_id": telegram_client_id,
+            "redirect_uri": app_url,
+            "response_type": "code",
+            "scope": TELEGRAM_SCOPES,
+            "state": auth_state,
             "code_challenge": code_challenge,
-            "code_challenge_method": "s256",
+            "code_challenge_method": "S256",
         }
     )
-    authorize_url = f"{supabase_url.rstrip('/')}/auth/v1/authorize?{query}"
+    authorize_url = f"{TELEGRAM_AUTH_URL}?{query}"
     return authorize_url
 
 

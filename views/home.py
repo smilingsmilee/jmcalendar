@@ -60,22 +60,8 @@ def home_page():
     )
 
     if sign_out_current or sign_out_everywhere:
-        sign_out_failed = False
-        try:
-            sign_out(scope="global" if sign_out_everywhere else "local")
-        except Exception:
-            sign_out_failed = True
         st.session_state.clear()
         st.session_state.page = "signin"
-        if sign_out_failed:
-            st.session_state.auth_notice = (
-                "You were signed out on this device, but Supabase could not "
-                + (
-                    "sign you out of your other devices."
-                    if sign_out_everywhere
-                    else "end the session remotely."
-                )
-            )
         st.rerun()
 
 def calendar(user_id):

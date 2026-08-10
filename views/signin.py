@@ -15,7 +15,7 @@ def signin_page():
 def telegram_sign_in():
     try:
         authorization_url = create_authorization_request(
-            os.getenv("SUPABASE_URL"),
+            os.getenv("TELEGRAM_CLIENT_ID"),
             os.getenv("APP_URL"),
             os.getenv("AUTH_STATE_SECRET"),
         )

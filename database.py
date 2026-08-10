@@ -15,13 +15,6 @@ def get_client():
         st.session_state.client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
     return st.session_state.client
 
-def exchange_code_for_session(code, code_verifier, redirect_to):
-    return get_client().auth.exchange_code_for_session({
-        "auth_code": code,
-        "code_verifier": code_verifier,
-        "redirect_to": redirect_to,
-    })
-
 def ensure_user_profile(user):
     metadata = user.user_metadata or {}
     name = (
@@ -32,11 +25,9 @@ def ensure_user_profile(user):
     get_client().table("users").upsert({
         "id": user.id,
         "name": name,
+        "email": metadata.get("email"),
     }).execute()
 
-def sign_out(scope="local"):
-    get_client().auth.sign_out({"scope": scope})
-    
 def add_new_band_to_database(name):
     result = get_client().table("bands").insert({"name": name}).execute()
     return result.data[0]["id"]
