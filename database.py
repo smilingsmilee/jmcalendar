@@ -1,11 +1,7 @@
-import os
 import streamlit as st
-from dotenv import load_dotenv
 from supabase import create_client
 
-load_dotenv()
-
-app_url = os.getenv("APP_URL")
+app_url = st.secrets["APP_URL"]
 
 class Band:
     def __init__(self, id, name):
@@ -14,7 +10,7 @@ class Band:
 
 def get_client():
     if "client" not in st.session_state:
-        st.session_state.client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
+        st.session_state.client = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
     return st.session_state.client
 
 def sign_in(email, password):
