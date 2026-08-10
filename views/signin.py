@@ -17,6 +17,7 @@ def telegram_sign_in():
             st.secrets.get("TELEGRAM_CLIENT_ID"),
             st.secrets.get("APP_URL"),
             st.secrets.get("AUTH_STATE_SECRET"),
+            join_band_id=st.session_state.get("pending_join_band"),
         )
     except TelegramAuthConfigurationError as e:
         st.error(str(e))

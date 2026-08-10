@@ -68,6 +68,10 @@ def authenticate_user(code, auth_state):
         ensure_user_profile(user)
         st.session_state.user = user
         st.session_state.page = "home"
+        stale_pending_band_id = st.session_state.pop("pending_join_band", None)
+        pending_band_id = state.get("join_band") or stale_pending_band_id
+        if pending_band_id:
+            handle_band_invite(pending_band_id)
     except (TelegramAuthConfigurationError, TelegramAuthStateError) as e:
         st.error(str(e))
         st.session_state.page = "signin"
@@ -118,6 +122,7 @@ def exchange_telegram_code(code, code_verifier, auth_state):
 
 def handle_band_invite(band_id):
     if st.session_state.user is None:
+        st.session_state.pending_join_band = band_id
         if st.session_state.get("invite_prompt_shown") != band_id:
             st.info("Sign in to accept this band invite.")
             st.session_state.page = "signin"
@@ -128,6 +133,7 @@ def handle_band_invite(band_id):
         join_band(st.session_state.user.id, band_id, is_leader=False)
         st.session_state.band = Band(id=band_id, name=get_band_name_from_band_id(band_id))
         st.session_state.page = "band"
+        st.session_state.pop("invite_prompt_shown", None)
     except Exception as e:
         st.error(f"Could not join band: {e}")
     finally:

@@ -24,6 +24,7 @@ def create_authorization_request(
     telegram_client_id,
     app_url,
     state_secret,
+    join_band_id=None,
 ):
     _require_config(
         TELEGRAM_CLIENT_ID=telegram_client_id,
@@ -35,10 +36,11 @@ def create_authorization_request(
     code_challenge = _base64url(
         hashlib.sha256(code_verifier.encode("ascii")).digest()
     )
+    state_payload = {"code_verifier": code_verifier}
+    if join_band_id:
+        state_payload["join_band"] = join_band_id
     auth_state = _encrypt_state(
-        {
-            "code_verifier": code_verifier,
-        },
+        state_payload,
         state_secret,
     )
     query = urlencode(
