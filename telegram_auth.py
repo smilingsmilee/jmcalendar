@@ -2,9 +2,11 @@ import base64
 import hashlib
 import json
 import secrets
+import time
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-from cryptography.fernet import Fernet, InvalidToken
+from cryptography.exceptions import InvalidTag
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 
 TELEGRAM_AUTH_URL = "https://oauth.telegram.org/auth"
@@ -32,7 +34,7 @@ def create_authorization_request(
         AUTH_STATE_SECRET=state_secret,
     )
 
-    code_verifier = secrets.token_urlsafe(64)
+    code_verifier = secrets.token_urlsafe(32)
     code_challenge = _base64url(
         hashlib.sha256(code_verifier.encode("ascii")).digest()
     )
@@ -73,12 +75,14 @@ def read_callback_state(auth_state, state_secret):
         )
 
     try:
-        payload = _fernet(state_secret).decrypt(
-            auth_state.encode("ascii"),
-            ttl=AUTH_STATE_TTL_SECONDS,
-        )
+        token = _b64url_decode(auth_state)
+        nonce, ciphertext = token[:12], token[12:]
+        payload = AESGCM(_aes_key(state_secret)).decrypt(nonce, ciphertext, None)
         state = json.loads(payload)
-    except (InvalidToken, UnicodeError, ValueError, TypeError, json.JSONDecodeError):
+        issued_at = state.pop("ts")
+        if time.time() - issued_at > AUTH_STATE_TTL_SECONDS:
+            raise ValueError("state expired")
+    except (InvalidTag, UnicodeError, ValueError, TypeError, KeyError, json.JSONDecodeError):
         raise TelegramAuthStateError(
             "Sign-in request is invalid or has expired."
         ) from None
@@ -93,19 +97,24 @@ def read_callback_state(auth_state, state_secret):
 
 
 def _encrypt_state(payload, state_secret):
+    payload = {**payload, "ts": int(time.time())}
     encoded = json.dumps(payload, separators=(",", ":")).encode("utf-8")
-    return _fernet(state_secret).encrypt(encoded).decode("ascii")
+    nonce = secrets.token_bytes(12)
+    ciphertext = AESGCM(_aes_key(state_secret)).encrypt(nonce, encoded, None)
+    return _base64url(nonce + ciphertext)
 
 
-def _fernet(state_secret):
-    key = base64.urlsafe_b64encode(
-        hashlib.sha256(state_secret.encode("utf-8")).digest()
-    )
-    return Fernet(key)
+def _aes_key(state_secret):
+    return hashlib.sha256(state_secret.encode("utf-8")).digest()
 
 
 def _base64url(value):
     return base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
+
+
+def _b64url_decode(value):
+    padding = "=" * (-len(value) % 4)
+    return base64.urlsafe_b64decode(value + padding)
 
 
 def _with_query_parameter(url, key, value):
