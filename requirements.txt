@@ -1,7 +1,7 @@
 streamlit==1.60.0
 pandas==3.0.5
 supabase==2.31.0
-PyJWT==2.10.1
+PyJWT==2.12.1
 requests==2.32.4
 python-dotenv==1.2.2
 cryptography==49.0.0
