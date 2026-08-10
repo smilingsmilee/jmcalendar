@@ -1,5 +1,4 @@
 import streamlit as st
-import os
 from types import SimpleNamespace
 import uuid
 import jwt
@@ -64,7 +63,7 @@ def main():
 # new tele auth
 def authenticate_user(code, auth_state):
     try:
-        state = read_callback_state(auth_state, os.getenv("AUTH_STATE_SECRET"))
+        state = read_callback_state(auth_state, st.secrets.get("AUTH_STATE_SECRET"))
         user = exchange_telegram_code(code, state["code_verifier"], auth_state)
         ensure_user_profile(user)
         st.session_state.user = user
@@ -86,9 +85,9 @@ def handle_authentication_error():
 
 
 def exchange_telegram_code(code, code_verifier, auth_state):
-    client_id = os.getenv("TELEGRAM_CLIENT_ID")
-    client_secret = os.getenv("TELEGRAM_CLIENT_SECRET")
-    callback_url = os.getenv("APP_URL")
+    client_id = st.secrets.get("TELEGRAM_CLIENT_ID")
+    client_secret = st.secrets.get("TELEGRAM_CLIENT_SECRET")
+    callback_url = st.secrets.get("APP_URL")
     token = requests.post(
         "https://oauth.telegram.org/token",
         data={"grant_type": "authorization_code", "code": code,

@@ -1,4 +1,3 @@
-import os
 import streamlit as st
 from telegram_auth import (
     TelegramAuthConfigurationError,
@@ -15,9 +14,9 @@ def signin_page():
 def telegram_sign_in():
     try:
         authorization_url = create_authorization_request(
-            os.getenv("TELEGRAM_CLIENT_ID"),
-            os.getenv("APP_URL"),
-            os.getenv("AUTH_STATE_SECRET"),
+            st.secrets.get("TELEGRAM_CLIENT_ID"),
+            st.secrets.get("APP_URL"),
+            st.secrets.get("AUTH_STATE_SECRET"),
         )
     except TelegramAuthConfigurationError as e:
         st.error(str(e))
