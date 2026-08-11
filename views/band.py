@@ -15,10 +15,20 @@ def band_page():
     st.code(f"{app_url}?join_band={band_id}")
     st.caption("Share this link with someone to invite them to the band.")
 
+    st.divider()
+
     show_members(band_id)
+
+    st.divider()
+
     if st.session_state.is_leader:
         show_availabilities(band_id)
+
+    st.divider()
+
     show_upcoming_rehearsals(band_id)
+
+    st.divider()
 
     if st.button("To home"):
         st.session_state.page = "home"
@@ -313,5 +323,3 @@ def show_upcoming_rehearsals(band_id):
                 if st.button("Delete rehearsal", key=f"delete_{hours[0]}", width='stretch'):
                     st.session_state[confirm_key] = True
                     st.rerun()
-
-        st.divider()

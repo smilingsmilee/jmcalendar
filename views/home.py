@@ -19,6 +19,9 @@ def home_page():
         st.session_state.week_offset = 0
 
     calendar(user_id)
+
+    st.divider()
+    
     show_bands(user_id)
 
     if "show_new_band_form" not in st.session_state:
@@ -50,6 +53,8 @@ def home_page():
     st.divider()
 
     show_upcoming_rehearsals(user_id)
+
+    st.divider()
 
     sign_out_current = st.button(
         "Sign Out",
@@ -205,8 +210,6 @@ def show_upcoming_rehearsals(user_id):
             st.markdown(f"{band_name}, **{start.strftime('%a %d %b')}, {start_str} - {end_str}** @ {location}")
         else:
             st.markdown(f"{band_name}, **{start.strftime('%a %d %b')}, {start_str} - {end_str}**")
-
-    st.divider()
 
 def merge_rehearsal_ranges(timestamps):
     ranges = []
