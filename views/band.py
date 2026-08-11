@@ -30,7 +30,7 @@ def band_page():
 
     st.divider()
 
-    if st.button("To home"):
+    if st.button("To home", width="stretch"):
         st.session_state.page = "home"
         st.rerun()
 
