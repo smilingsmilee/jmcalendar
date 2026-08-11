@@ -21,6 +21,8 @@ def main():
         st.session_state.user = None
     if "page" not in st.session_state:
         st.session_state.page = "signin"
+    if "dev_mode" not in st.session_state:
+        st.session_state.dev_mode = False
 
     auth_error = (
         st.query_params.get("error_description")

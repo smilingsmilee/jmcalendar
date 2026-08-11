@@ -1,4 +1,8 @@
+import uuid
+from types import SimpleNamespace
+
 import streamlit as st
+from database import ensure_user_profile
 from telegram_auth import (
     TelegramAuthConfigurationError,
     create_authorization_request,
@@ -10,6 +14,8 @@ def signin_page():
         st.warning(notice)
     st.write("Use your Telegram account to continue.")
     telegram_sign_in()
+    if st.secrets.get("DEV_MODE"):
+        dev_sign_in()
 
 def telegram_sign_in():
     try:
@@ -29,3 +35,20 @@ def telegram_sign_in():
         type="primary",
         width="stretch",
     )
+
+def dev_sign_in():
+    st.divider()
+    st.caption("DEV_MODE is on: sign in without Telegram for local testing.")
+    name = st.text_input("Dev user name", value="Dev User", key="dev_sign_in_name")
+    if st.button("Dev Sign In", width="stretch") and name.strip():
+        user_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"dev:{name.strip()}"))
+        user = SimpleNamespace(id=user_id, user_metadata={
+            "name": name.strip(),
+            "preferred_username": name.strip(),
+            "email": f"dev_{user_id}@users.invalid",
+        })
+        ensure_user_profile(user)
+        st.session_state.user = user
+        st.session_state.dev_mode = True
+        st.session_state.page = "home"
+        st.rerun()

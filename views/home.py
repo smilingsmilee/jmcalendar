@@ -4,6 +4,9 @@ from database import *
 from frontend.availability_grid import availability_grid
 
 def home_page():
+    if st.session_state.dev_mode:
+        st.title("Dev mode")
+
     user_id = st.session_state.user.id
 
     if "availability" not in st.session_state:

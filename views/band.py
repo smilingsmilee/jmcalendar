@@ -3,7 +3,10 @@ import pandas as pd
 from datetime import datetime, time, timedelta
 from database import *
 
-def band_page():    
+def band_page():
+    if st.session_state.dev_mode:
+        st.title("Dev mode")
+
     band_id = st.session_state.band.id
 
     st.session_state.is_leader = is_leader(st.session_state.user.id, band_id)
