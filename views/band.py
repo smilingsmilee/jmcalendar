@@ -29,9 +29,30 @@ def band_page():
 
     st.divider()
 
-    if st.button("To home", width="stretch"):
-        st.session_state.page = "home"
-        st.rerun()
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.session_state.get("confirm_quit_band"):
+            st.warning("Leave this band?")
+            col_yes, col_no = st.columns(2)
+            with col_yes:
+                if st.button("Yes", key="confirm_quit_band_yes", width="stretch"):
+                    remove_member_from_band(band_id, st.session_state.user.id)
+                    st.session_state.pop("confirm_quit_band", None)
+                    st.session_state.pop("band", None)
+                    st.session_state.page = "home"
+                    st.rerun()
+            with col_no:
+                if st.button("No", key="confirm_quit_band_no", width="stretch"):
+                    st.session_state.pop("confirm_quit_band", None)
+                    st.rerun()
+        else:
+            if st.button("Quit band", width="stretch"):
+                st.session_state.confirm_quit_band = True
+                st.rerun()
+    with col2:
+        if st.button("To home", width="stretch"):
+            st.session_state.page = "home"
+            st.rerun()
 
 def show_band_name_and_invite_link(band_name, band_id):
     st.title(band_name)
