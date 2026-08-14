@@ -2,7 +2,7 @@ import uuid
 from types import SimpleNamespace
 
 import streamlit as st
-from database import ensure_user_profile
+from database import Band, ensure_user_profile, get_band_name_from_band_id, join_band
 from telegram_auth import (
     TelegramAuthConfigurationError,
     create_authorization_request,
@@ -51,4 +51,15 @@ def dev_sign_in():
         st.session_state.user = user
         st.session_state.dev_mode = True
         st.session_state.page = "home"
+        pending_band_id = st.session_state.pop("pending_join_band", None)
+        if pending_band_id:
+            try:
+                join_band(user.id, pending_band_id, is_leader=False)
+                st.session_state.band = Band(
+                    id=pending_band_id,
+                    name=get_band_name_from_band_id(pending_band_id),
+                )
+                st.session_state.pop("invite_prompt_shown", None)
+            except Exception as e:
+                st.error(f"Could not join band: {e}")
         st.rerun()
