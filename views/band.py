@@ -22,8 +22,7 @@ def band_page():
 
     if st.session_state.is_leader:
         show_availabilities(band_id)
-
-    st.divider()
+        st.divider()
 
     show_upcoming_rehearsals(band_id)
 
