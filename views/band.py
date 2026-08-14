@@ -8,12 +8,11 @@ def band_page():
         st.title("Dev mode")
 
     band_id = st.session_state.band.id
+    band_name = st.session_state.band.name
 
     st.session_state.is_leader = is_leader(st.session_state.user.id, band_id)
 
-    st.title(f"{st.session_state.band.name}")
-    st.code(f"{app_url}?join_band={band_id}")
-    st.caption("Share this link with someone to invite them to the band.")
+    show_band_name_and_invite_link(band_name, band_id)
 
     st.divider()
 
@@ -33,6 +32,39 @@ def band_page():
     if st.button("To home", width="stretch"):
         st.session_state.page = "home"
         st.rerun()
+
+def show_band_name_and_invite_link(band_name, band_id):
+    st.title(band_name)
+
+    if "change_band_name_form" not in st.session_state:
+        st.session_state.change_band_name_form = False
+
+    if st.session_state.is_leader:
+        if st.button("Change name"):
+            st.session_state.change_band_name_form = True
+
+        if st.session_state.change_band_name_form:
+            with st.form("Change band name"):
+                new_name = st.text_input("Name of band", value=band_name)
+                col1, col2 = st.columns(2)
+                with col1:
+                    submitted = st.form_submit_button("Save", width='stretch')
+                with col2:
+                    cancelled = st.form_submit_button("Cancel", width='stretch')
+            if submitted:
+                try:
+                    update_band_name(band_id, new_name)
+                    st.session_state.band.name = new_name
+                    st.session_state.change_band_name_form = False
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Could not change band name: {e}")
+            elif cancelled:
+                st.session_state.change_band_name_form = False
+                st.rerun()
+
+    st.code(f"{app_url}?join_band={band_id}")
+    st.caption("Share this link with someone to invite them to the band.")
 
 def show_members(band_id):
     st.subheader("Members")
