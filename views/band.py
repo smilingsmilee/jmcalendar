@@ -62,6 +62,7 @@ def show_members(band_id):
                     value=member["instrument"] or "",
                     label_visibility="collapsed",
                     placeholder="Instrument",
+                    key=f"instrument_{member['id']}"
                 )
             if instrument != (member["instrument"] or ""):
                 try:
