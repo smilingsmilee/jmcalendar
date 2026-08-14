@@ -47,7 +47,7 @@ def show_members(band_id):
                 st.markdown(f"**{member['name']}**")
     else:
         for index, member in enumerate(members):
-            col1, col2, col3, col4 = st.columns([1, 1, 5, 10])
+            col1, col2, col3, col4, col5 = st.columns([1, 1, 5, 10, 4])
             with col1:
                 if st.button("↑", key=f"up_{member['id']}", disabled=index == 0):
                     move_member(band_id, members, index, index - 1)
@@ -70,6 +70,25 @@ def show_members(band_id):
                     st.rerun()
                 except Exception as e:
                     st.error(f"Could not update {member['name']}'s instrument: {e}")
+            with col5:
+                if member["id"] != st.session_state.user.id:
+                    confirm_key = f"confirm_kick_{member['id']}"
+                    if st.session_state.get(confirm_key):
+                        st.warning(f"Remove {member['name']} from the band?")
+                        col_yes, col_no = st.columns(2)
+                        with col_yes:
+                            if st.button("Yes", key=f"{confirm_key}_yes", width="stretch"):
+                                remove_member_from_band(band_id, member["id"])
+                                st.session_state.pop(confirm_key, None)
+                                st.rerun()
+                        with col_no:
+                            if st.button("No", key=f"{confirm_key}_no", width="stretch"):
+                                st.session_state.pop(confirm_key, None)
+                                st.rerun()
+                    else:
+                        if st.button("Kick", key=f"kick_{member['id']}"):
+                            st.session_state[confirm_key] = True
+                            st.rerun()
 
 def move_member(band_id, members, from_index, to_index):
     ids = [member["id"] for member in members]

@@ -135,3 +135,6 @@ def delete_rehearsal(band_id, timestamp):
 def get_rehearsals_from_user_id(user_id):
     result = get_client().table("rehearsals").select("timestamp, band_id, location").eq("member_id", user_id).eq("attendance", True).execute()
     return result.data
+
+def remove_member_from_band(band_id, member_id):
+    get_client().table("members").delete().eq("band_id", band_id).eq("member_id", member_id).execute()
