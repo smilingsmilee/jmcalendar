@@ -151,7 +151,7 @@ def move_member(band_id, members, from_index, to_index):
 
 def show_availabilities(band_id):
     st.subheader("Availability")
-    st.caption("Darker cells mean more members are free at that time.")
+    st.caption("Darker cells mean more members are free at that time. Click a cell to see who's available.")
 
     members = get_members_from_band_id(band_id)
     total_members = len(members)
@@ -207,7 +207,21 @@ def show_availabilities(band_id):
     ]
 
     grid_key = f"band_avail_heatmap_{band_id}_{monday.isoformat()}"
-    availability_heatmap(days=day_labels, hours=time_labels, counts=counts, max_count=total_members, key=grid_key)
+    clicked = availability_heatmap(days=day_labels, hours=time_labels, counts=counts, max_count=total_members, key=grid_key)
+
+    if clicked is not None:
+        row, col = clicked
+        st.session_state.band_avail_selected_slot = datetime.combine(week_days[col], hours[row]).isoformat()
+
+    valid_timestamps = {datetime.combine(day, hour).isoformat() for day in week_days for hour in hours}
+    selected_ts = st.session_state.get("band_avail_selected_slot")
+    if selected_ts in valid_timestamps:
+        available_ids = set(band_availabilities.get(selected_ts, []))
+        selected_dt = datetime.fromisoformat(selected_ts)
+        st.markdown(f"**{selected_dt.strftime('%a %d %b')}, {selected_dt.strftime('%I %p').lstrip('0')}**")
+        for member in members:
+            icon = "✅" if member["id"] in available_ids else "❌"
+            st.write(f"{icon} {member['name']}")
 
     if st.button("To current week", width='stretch', key="band_avail_current_week"):
         st.session_state.band_avail_week_offset = 0

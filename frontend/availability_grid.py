@@ -19,4 +19,12 @@ def availability_grid(days, hours, values, key):
 
 
 def availability_heatmap(days, hours, counts, max_count, key):
-    _component_func(days=days, hours=hours, counts=counts, max_count=max_count, mode="heatmap", key=key, default=None)
+    result = _component_func(days=days, hours=hours, counts=counts, max_count=max_count, mode="heatmap", key=key, default=None)
+    if result is None:
+        return None
+
+    nonce_key = f"_{key}_availability_heatmap_nonce"
+    if result.get("nonce") == st.session_state.get(nonce_key):
+        return None
+    st.session_state[nonce_key] = result.get("nonce")
+    return result.get("row"), result.get("col")

@@ -68,7 +68,10 @@
   .heat {
     border: 1px solid var(--border);
     min-height: 26px;
-    cursor: default;
+    cursor: pointer;
+  }
+  .heat:hover {
+    filter: brightness(0.9);
   }
 </style>
 </head>
@@ -188,6 +191,8 @@
           cell.className = "cell heat";
           cell.style.background = heatColor(ratio);
           cell.title = count + " / " + maxCount + " available";
+          cell.dataset.row = row;
+          cell.dataset.col = col;
         } else {
           cell.className = "cell slot" + (values[row][col] ? " on" : "");
           cell.dataset.row = row;
@@ -234,6 +239,13 @@
     dragging = false;
     var nonce = Date.now() + ":" + Math.random();
     setComponentValue({ values: values, nonce: nonce });
+  });
+
+  root.addEventListener("click", function (e) {
+    var cell = e.target.closest(".heat");
+    if (!cell) return;
+    var nonce = Date.now() + ":" + Math.random();
+    setComponentValue({ row: +cell.dataset.row, col: +cell.dataset.col, nonce: nonce });
   });
 
   window.addEventListener("message", function (event) {
