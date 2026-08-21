@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, time, timedelta
 from database import *
+from frontend.availability_grid import availability_heatmap
 
 def band_page():
     if st.session_state.dev_mode:
@@ -150,117 +151,66 @@ def move_member(band_id, members, from_index, to_index):
 
 def show_availabilities(band_id):
     st.subheader("Availability")
-    st.caption("Select times in the grid, then confirm to schedule the rehearsals.")
+    st.caption("Darker cells mean more members are free at that time.")
 
     members = get_members_from_band_id(band_id)
-    if not members:
+    total_members = len(members)
+    if total_members == 0:
         st.info("No members yet.")
         return
 
+    if "band_avail_week_offset" not in st.session_state:
+        st.session_state.band_avail_week_offset = 0
+
     band_availabilities = get_availabilities_from_band_id(band_id)
 
-    if "rehearsal_date_slots" not in st.session_state:
-        st.session_state.rehearsal_date_slots = [0]
-        st.session_state.rehearsal_date_next_id = 1
+    today = datetime.now().date()
+    monday = today - timedelta(days=today.weekday()) + timedelta(weeks=st.session_state.band_avail_week_offset)
+    week_days = [monday + timedelta(days=i) for i in range(7)]
 
-    slots = st.session_state.rehearsal_date_slots
+    col1, col2, col3 = st.columns([1, 3, 1])
+    with col1:
+        if st.button("← Previous week", width='stretch', key="band_avail_prev_week"):
+            st.session_state.band_avail_week_offset -= 1
+            st.rerun()
+    with col2:
+        if week_days[0].year != week_days[-1].year:
+            st.markdown(
+                f"<div style='text-align:center; padding-top:0.5rem;'>"
+                f"{week_days[0].strftime('%d %b %Y')} - {week_days[-1].strftime('%d %b %Y')}</div>",
+                unsafe_allow_html=True
+            )
+        elif week_days[0].month != week_days[-1].month:
+            st.markdown(
+                f"<div style='text-align:center; padding-top:0.5rem;'>"
+                f"{week_days[0].strftime('%d %b')} - {week_days[-1].strftime('%d %b %Y')}</div>",
+                unsafe_allow_html=True
+            )
+        else:
+            st.markdown(
+                f"<div style='text-align:center; padding-top:0.5rem;'>"
+                f"{week_days[0].strftime('%d')} - {week_days[-1].strftime('%d %b %Y')}</div>",
+                unsafe_allow_html=True
+            )
+    with col3:
+        if st.button("Next week →", width='stretch', key="band_avail_next_week"):
+            st.session_state.band_avail_week_offset += 1
+            st.rerun()
 
-    if st.session_state.pop("clear_availability_selection", False):
-        for slot_id in slots:
-            st.session_state[f"avail_grid_{slot_id}"] = {"selection": {"rows": [], "columns": [], "cells": []}}
+    hours = [time(hour=h) for h in range(10, 22)]
+    time_labels = [hour.strftime("%I %p").lstrip("0") for hour in hours]
+    day_labels = [day.strftime("%a %d %b") for day in week_days]
 
-    kept_slots = []
-    last_date_value = None
-    all_selected_timestamps = set()
+    counts = [
+        [len(band_availabilities.get(datetime.combine(day, hour).isoformat(), [])) for day in week_days]
+        for hour in hours
+    ]
 
-    for slot_id in slots:
-        col1, col2 = st.columns([1, 4])
-        with col1:
-            date_value = st.date_input("Date", value=None, format="DD/MM/YYYY", key=f"rehearsal_date_{slot_id}")
-        with col2:
-            if date_value is not None:
-                st.markdown(f"**{date_value.strftime('%a %d %b')}**")
+    grid_key = f"band_avail_heatmap_{band_id}_{monday.isoformat()}"
+    availability_heatmap(days=day_labels, hours=time_labels, counts=counts, max_count=total_members, key=grid_key)
 
-                hours = [time(hour=h) for h in range(10, 22)]
-                timestamps = [datetime.combine(date_value, hour).isoformat() for hour in hours]
-                time_labels = [hour.strftime("%I %p").lstrip("0") for hour in hours]
-                member_labels = [
-                    f"{member['name']} ({member['instrument']})" if member["instrument"] else member["name"]
-                    for member in members
-                ]
-
-                grid = pd.DataFrame(
-                    {
-                        ts: [
-                            "available" if member["id"] in band_availabilities.get(ts, []) else "unavailable"
-                            for member in members
-                        ]
-                        for ts in timestamps
-                    },
-                    index=member_labels,
-                )
-
-                styled_grid = grid.style.map(
-                    lambda status: f"background-color: {'#1e8e3e' if status == 'available' else '#d93025'}; color: transparent"
-                )
-
-                grid_key = f"avail_grid_{slot_id}"
-                event = st.dataframe(
-                    styled_grid,
-                    column_config={
-                        ts: st.column_config.Column(label=label, width=50)
-                        for ts, label in zip(timestamps, time_labels)
-                    },
-                    width='stretch',
-                    hide_index=False,
-                    on_select="rerun",
-                    selection_mode="multi-column",
-                    key=grid_key,
-                )
-                all_selected_timestamps.update(event.selection.columns)
-
-        last_date_value = date_value
-        if date_value is not None:
-            kept_slots.append(slot_id)
-
-    if all_selected_timestamps:
-        st.caption("Selected:")
-        for start, end in merge_rehearsal_ranges(all_selected_timestamps):
-            start_str = start.strftime("%I %p").lstrip("0")
-            end_str = end.strftime("%I %p").lstrip("0")
-            st.markdown(f"**{start.strftime('%a %d %b')}, {start_str} - {end_str}**")
-
-        location = st.text_input(
-            "Location",
-            key="rehearsal_location_input",
-            placeholder="e.g. Practice Room 2 (optional)",
-        )
-
-        col_confirm, col_clear = st.columns(2)
-        with col_confirm:
-            if st.button("Confirm rehearsals", width='stretch'):
-                try:
-                    for timestamp in all_selected_timestamps:
-                        add_rehearsal(band_id, timestamp, st.session_state.user.id, location or None)
-                    st.session_state.clear_availability_selection = True
-                    st.session_state.pop("rehearsal_location_input", None)
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Could not schedule rehearsals: {e}")
-        with col_clear:
-            if st.button("Clear selection", width='stretch'):
-                st.session_state.clear_availability_selection = True
-                st.session_state.pop("rehearsal_location_input", None)
-                st.rerun()
-
-    if last_date_value is not None:
-        kept_slots.append(st.session_state.rehearsal_date_next_id)
-        st.session_state.rehearsal_date_next_id += 1
-    else:
-        kept_slots.append(slots[-1])
-
-    if kept_slots != slots:
-        st.session_state.rehearsal_date_slots = kept_slots
+    if st.button("To current week", width='stretch', key="band_avail_current_week"):
+        st.session_state.band_avail_week_offset = 0
         st.rerun()
 
 def merge_rehearsal_ranges(timestamps):

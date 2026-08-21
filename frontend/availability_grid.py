@@ -16,3 +16,7 @@ def availability_grid(days, hours, values, key):
         return None
     st.session_state[nonce_key] = result.get("nonce")
     return result.get("values")
+
+
+def availability_heatmap(days, hours, counts, max_count, key):
+    _component_func(days=days, hours=hours, counts=counts, max_count=max_count, mode="heatmap", key=key, default=None)

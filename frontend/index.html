@@ -65,6 +65,11 @@
     background: var(--accent);
     border-color: var(--accent);
   }
+  .heat {
+    border: 1px solid var(--border);
+    min-height: 26px;
+    cursor: default;
+  }
 </style>
 </head>
 <body>
@@ -119,9 +124,38 @@
     if (el) el.classList.toggle("on", on);
   }
 
+  var ACCENT_RGB = { r: 30, g: 142, b: 62 };
+
+  function parseColor(str) {
+    var d = document.createElement("div");
+    d.style.color = str;
+    document.body.appendChild(d);
+    var rgb = getComputedStyle(d).color;
+    document.body.removeChild(d);
+    var m = rgb.match(/\d+/g) || [240, 242, 246];
+    return { r: +m[0], g: +m[1], b: +m[2] };
+  }
+
+  function makeHeatColorer() {
+    var panel = parseColor(
+      getComputedStyle(document.documentElement).getPropertyValue("--panel-bg").trim() || "#f0f2f6"
+    );
+    return function (ratio) {
+      ratio = Math.max(0, Math.min(1, ratio));
+      var r = Math.round(panel.r + (ACCENT_RGB.r - panel.r) * ratio);
+      var g = Math.round(panel.g + (ACCENT_RGB.g - panel.g) * ratio);
+      var b = Math.round(panel.b + (ACCENT_RGB.b - panel.b) * ratio);
+      return "rgb(" + r + "," + g + "," + b + ")";
+    };
+  }
+
   function renderGrid(args) {
     days = args.days || [];
     hours = args.hours || [];
+    var mode = args.mode || "edit";
+    var counts = args.counts || [];
+    var maxCount = args.max_count || 0;
+    var heatColor = mode === "heatmap" ? makeHeatColorer() : null;
     values = (args.values || []).map(function (row) { return row.slice(); });
 
     root.innerHTML = "";
@@ -148,9 +182,17 @@
 
       days.forEach(function (_, col) {
         var cell = document.createElement("div");
-        cell.className = "cell slot" + (values[row][col] ? " on" : "");
-        cell.dataset.row = row;
-        cell.dataset.col = col;
+        if (mode === "heatmap") {
+          var count = (counts[row] && counts[row][col]) || 0;
+          var ratio = maxCount > 0 ? count / maxCount : 0;
+          cell.className = "cell heat";
+          cell.style.background = heatColor(ratio);
+          cell.title = count + " / " + maxCount + " available";
+        } else {
+          cell.className = "cell slot" + (values[row][col] ? " on" : "");
+          cell.dataset.row = row;
+          cell.dataset.col = col;
+        }
         grid.appendChild(cell);
       });
     });
