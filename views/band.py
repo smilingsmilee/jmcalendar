@@ -21,9 +21,8 @@ def band_page():
 
     st.divider()
 
-    if st.session_state.is_leader:
-        show_availabilities(band_id)
-        st.divider()
+    show_availabilities(band_id)
+    st.divider()
 
     show_upcoming_rehearsals(band_id)
 
@@ -87,20 +86,32 @@ def show_band_name_and_invite_link(band_name, band_id):
     st.code(f"{app_url}?join_band={band_id}")
     st.caption("Share this link with someone to invite them to the band.")
 
+def get_key_member_ids(band_id, members):
+    if not st.session_state.is_leader:
+        return set()
+    all_ids = {member["id"] for member in members}
+    key_member_ids = st.session_state.setdefault("band_key_members", {}).setdefault(band_id, set())
+    key_member_ids &= all_ids
+    return key_member_ids
+
 def show_members(band_id):
     st.subheader("Members")
     members = get_members_from_band_id(band_id)
     if not members:
         st.info("No members yet.")
-    elif not st.session_state.is_leader:
+        return
+
+    if not st.session_state.is_leader:
         for member in members:
             if member["instrument"]:
                 st.markdown(f"**{member['name']}**: {member['instrument']}")
             else:
                 st.markdown(f"**{member['name']}**")
     else:
+        key_member_ids = get_key_member_ids(band_id, members)
+        st.caption("⭐ Key members must all be available for a slot to show as free on the heatmap. This selection is only visible to you and resets when you leave the page.")
         for index, member in enumerate(members):
-            col1, col2, col3, col4, col5 = st.columns([1, 1, 5, 10, 4])
+            col1, col2, col3, col4, col5, col6 = st.columns([1, 1, 4, 8, 2, 4])
             with col1:
                 if st.button("↑", key=f"up_{member['id']}", disabled=index == 0):
                     move_member(band_id, members, index, index - 1)
@@ -124,6 +135,16 @@ def show_members(band_id):
                 except Exception as e:
                     st.error(f"Could not update {member['name']}'s instrument: {e}")
             with col5:
+                key_member = st.checkbox(
+                    "⭐",
+                    value=member["id"] in key_member_ids,
+                    key=f"key_member_{band_id}_{member['id']}"
+                )
+                if key_member:
+                    key_member_ids.add(member["id"])
+                else:
+                    key_member_ids.discard(member["id"])
+            with col6:
                 if member["id"] != st.session_state.user.id:
                     confirm_key = f"confirm_kick_{member['id']}"
                     if st.session_state.get(confirm_key):
@@ -151,13 +172,18 @@ def move_member(band_id, members, from_index, to_index):
 
 def show_availabilities(band_id):
     st.subheader("Availability")
-    st.caption("Darker cells mean more members are free at that time. Click a cell to see who's available.")
 
     members = get_members_from_band_id(band_id)
     total_members = len(members)
     if total_members == 0:
         st.info("No members yet.")
         return
+
+    key_member_ids = get_key_member_ids(band_id, members)
+    if key_member_ids:
+        st.caption("Green cells mean all ⭐ key members are free at that time. Click a cell to see who's available.")
+    else:
+        st.caption("Darker cells mean more members are free at that time. Click a cell to see who's available.")
 
     if "band_avail_week_offset" not in st.session_state:
         st.session_state.band_avail_week_offset = 0
@@ -201,13 +227,24 @@ def show_availabilities(band_id):
     time_labels = [hour.strftime("%I %p").lstrip("0") for hour in hours]
     day_labels = [day.strftime("%a %d %b") for day in week_days]
 
-    counts = [
-        [len(band_availabilities.get(datetime.combine(day, hour).isoformat(), [])) for day in week_days]
-        for hour in hours
-    ]
+    if key_member_ids:
+        counts = [
+            [
+                1 if key_member_ids.issubset(band_availabilities.get(datetime.combine(day, hour).isoformat(), [])) else 0
+                for day in week_days
+            ]
+            for hour in hours
+        ]
+        max_count = 1
+    else:
+        counts = [
+            [len(band_availabilities.get(datetime.combine(day, hour).isoformat(), [])) for day in week_days]
+            for hour in hours
+        ]
+        max_count = total_members
 
     grid_key = f"band_avail_heatmap_{band_id}_{monday.isoformat()}"
-    clicked = availability_heatmap(days=day_labels, hours=time_labels, counts=counts, max_count=total_members, key=grid_key)
+    clicked = availability_heatmap(days=day_labels, hours=time_labels, counts=counts, max_count=max_count, key=grid_key)
 
     if clicked is not None:
         row, col = clicked
