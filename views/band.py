@@ -260,6 +260,15 @@ def show_availabilities(band_id):
             icon = "✅" if member["id"] in available_ids else "❌"
             st.write(f"{icon} {member['name']}")
 
+        if st.session_state.is_leader:
+            rehearsal_attendance = get_rehearsals_from_band_id(band_id)
+            if selected_ts in rehearsal_attendance:
+                st.caption("A rehearsal is already scheduled for this slot.")
+            elif st.button("Create rehearsal", key="band_avail_create_rehearsal"):
+                add_rehearsal(band_id, selected_ts, st.session_state.user.id)
+                st.session_state.pop("band_avail_selected_slot", None)
+                st.rerun()
+
     if st.button("To current week", width='stretch', key="band_avail_current_week"):
         st.session_state.band_avail_week_offset = 0
         st.rerun()
