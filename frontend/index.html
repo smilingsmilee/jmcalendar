@@ -73,6 +73,9 @@
   .heat:hover {
     filter: brightness(0.9);
   }
+  .heat.selecting {
+    box-shadow: inset 0 0 0 2px var(--text);
+  }
 </style>
 </head>
 <body>
@@ -106,6 +109,11 @@
   var values = [];
   var dragging = false;
   var paintValue = true;
+  var heatDragging = false;
+  var heatAnchorRow = null;
+  var heatAnchorCol = null;
+  var heatSelStart = null;
+  var heatSelEnd = null;
 
   function applyTheme(theme) {
     if (!theme) return;
@@ -211,41 +219,80 @@
     return el ? el.closest(".slot") : null;
   }
 
+  function findHeatFromPoint(x, y) {
+    var el = document.elementFromPoint(x, y);
+    return el ? el.closest(".heat") : null;
+  }
+
+  function updateHeatSelection(start, end, col) {
+    heatSelStart = start;
+    heatSelEnd = end;
+    var cells = root.querySelectorAll(".heat");
+    for (var i = 0; i < cells.length; i++) {
+      var cell = cells[i];
+      var row = +cell.dataset.row;
+      var inRange = +cell.dataset.col === col && row >= start && row <= end;
+      cell.classList.toggle("selecting", inRange);
+    }
+  }
+
   root.addEventListener("pointerdown", function (e) {
     var slot = e.target.closest(".slot");
-    if (!slot) return;
-    e.preventDefault();
-    var row = +slot.dataset.row;
-    var col = +slot.dataset.col;
-    dragging = true;
-    paintValue = !values[row][col];
-    setCell(row, col, paintValue);
+    if (slot) {
+      e.preventDefault();
+      var row = +slot.dataset.row;
+      var col = +slot.dataset.col;
+      dragging = true;
+      paintValue = !values[row][col];
+      setCell(row, col, paintValue);
+      return;
+    }
+
+    var heat = e.target.closest(".heat");
+    if (heat) {
+      e.preventDefault();
+      heatDragging = true;
+      heatAnchorRow = +heat.dataset.row;
+      heatAnchorCol = +heat.dataset.col;
+      updateHeatSelection(heatAnchorRow, heatAnchorRow, heatAnchorCol);
+    }
   });
 
   document.addEventListener(
     "pointermove",
     function (e) {
-      if (!dragging) return;
-      e.preventDefault();
-      var slot = findSlotFromPoint(e.clientX, e.clientY);
-      if (!slot) return;
-      setCell(+slot.dataset.row, +slot.dataset.col, paintValue);
+      if (dragging) {
+        e.preventDefault();
+        var slot = findSlotFromPoint(e.clientX, e.clientY);
+        if (!slot) return;
+        setCell(+slot.dataset.row, +slot.dataset.col, paintValue);
+        return;
+      }
+      if (heatDragging) {
+        e.preventDefault();
+        var cell = findHeatFromPoint(e.clientX, e.clientY);
+        if (!cell) return;
+        var col = +cell.dataset.col;
+        if (col !== heatAnchorCol) return;
+        var row = +cell.dataset.row;
+        updateHeatSelection(Math.min(heatAnchorRow, row), Math.max(heatAnchorRow, row), heatAnchorCol);
+      }
     },
     { passive: false }
   );
 
   document.addEventListener("pointerup", function () {
-    if (!dragging) return;
-    dragging = false;
-    var nonce = Date.now() + ":" + Math.random();
-    setComponentValue({ values: values, nonce: nonce });
-  });
-
-  root.addEventListener("click", function (e) {
-    var cell = e.target.closest(".heat");
-    if (!cell) return;
-    var nonce = Date.now() + ":" + Math.random();
-    setComponentValue({ row: +cell.dataset.row, col: +cell.dataset.col, nonce: nonce });
+    if (dragging) {
+      dragging = false;
+      var nonce = Date.now() + ":" + Math.random();
+      setComponentValue({ values: values, nonce: nonce });
+      return;
+    }
+    if (heatDragging) {
+      heatDragging = false;
+      var nonce = Date.now() + ":" + Math.random();
+      setComponentValue({ col: heatAnchorCol, rowStart: heatSelStart, rowEnd: heatSelEnd, nonce: nonce });
+    }
   });
 
   window.addEventListener("message", function (event) {

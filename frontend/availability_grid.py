@@ -27,4 +27,4 @@ def availability_heatmap(days, hours, counts, max_count, key):
     if result.get("nonce") == st.session_state.get(nonce_key):
         return None
     st.session_state[nonce_key] = result.get("nonce")
-    return result.get("row"), result.get("col")
+    return result.get("rowStart"), result.get("rowEnd"), result.get("col")

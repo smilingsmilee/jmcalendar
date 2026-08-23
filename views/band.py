@@ -181,9 +181,9 @@ def show_availabilities(band_id):
 
     key_member_ids = get_key_member_ids(band_id, members)
     if key_member_ids:
-        st.caption("Green cells mean all ⭐ key members are free at that time. Click a cell to see who's available.")
+        st.caption("Green cells mean all ⭐ key members are free at that time. Click or drag within a day to see who's available.")
     else:
-        st.caption("Darker cells mean more members are free at that time. Click a cell to see who's available.")
+        st.caption("Darker cells mean more members are free at that time. Click or drag within a day to see who's available.")
 
     if "band_avail_week_offset" not in st.session_state:
         st.session_state.band_avail_week_offset = 0
@@ -247,26 +247,69 @@ def show_availabilities(band_id):
     clicked = availability_heatmap(days=day_labels, hours=time_labels, counts=counts, max_count=max_count, key=grid_key)
 
     if clicked is not None:
-        row, col = clicked
-        st.session_state.band_avail_selected_slot = datetime.combine(week_days[col], hours[row]).isoformat()
+        row_start, row_end, col = clicked
+        st.session_state.band_avail_selected_range = {
+            "start": datetime.combine(week_days[col], hours[row_start]).isoformat(),
+            "end": datetime.combine(week_days[col], hours[row_end]).isoformat(),
+        }
 
     valid_timestamps = {datetime.combine(day, hour).isoformat() for day in week_days for hour in hours}
-    selected_ts = st.session_state.get("band_avail_selected_slot")
-    if selected_ts in valid_timestamps:
-        available_ids = set(band_availabilities.get(selected_ts, []))
-        selected_dt = datetime.fromisoformat(selected_ts)
-        st.markdown(f"**{selected_dt.strftime('%a %d %b')}, {selected_dt.strftime('%I %p').lstrip('0')}**")
-        for member in members:
-            icon = "✅" if member["id"] in available_ids else "❌"
-            st.write(f"{icon} {member['name']}")
+    selected_range = st.session_state.get("band_avail_selected_range")
+    if selected_range and selected_range["start"] in valid_timestamps and selected_range["end"] in valid_timestamps:
+        start_dt = datetime.fromisoformat(selected_range["start"])
+        end_dt = datetime.fromisoformat(selected_range["end"])
+        selected_timestamps = []
+        curr = start_dt
+        while curr <= end_dt:
+            selected_timestamps.append(curr.isoformat())
+            curr += timedelta(hours=1)
+
+        start_label = start_dt.strftime("%I %p").lstrip("0")
+        if start_dt == end_dt:
+            st.markdown(f"**{start_dt.strftime('%a %d %b')}, {start_label}**")
+        else:
+            end_label = (end_dt + timedelta(hours=1)).strftime("%I %p").lstrip("0")
+            st.markdown(f"**{start_dt.strftime('%a %d %b')}, {start_label} - {end_label}**")
+
+        member_labels = [
+            f"{member['name']} ({member['instrument']})" if member["instrument"] else member["name"]
+            for member in members
+        ]
+        slot_labels = [datetime.fromisoformat(ts).strftime("%I %p").lstrip("0") for ts in selected_timestamps]
+
+        grid = pd.DataFrame(
+            {
+                ts: [
+                    "available" if member["id"] in band_availabilities.get(ts, []) else "unavailable"
+                    for member in members
+                ]
+                for ts in selected_timestamps
+            },
+            index=member_labels,
+        )
+
+        styled_grid = grid.style.map(
+            lambda status: f"background-color: {'#1e8e3e' if status == 'available' else '#d93025'}; color: transparent"
+        )
+
+        st.dataframe(
+            styled_grid,
+            column_config={
+                ts: st.column_config.Column(label=label, width=50)
+                for ts, label in zip(selected_timestamps, slot_labels)
+            },
+            width='stretch',
+            hide_index=False,
+        )
 
         if st.session_state.is_leader:
             rehearsal_attendance = get_rehearsals_from_band_id(band_id)
-            if selected_ts in rehearsal_attendance:
-                st.caption("A rehearsal is already scheduled for this slot.")
+            if any(ts in rehearsal_attendance for ts in selected_timestamps):
+                st.caption("A rehearsal already overlaps this range.")
             elif st.button("Create rehearsal", key="band_avail_create_rehearsal"):
-                add_rehearsal(band_id, selected_ts, st.session_state.user.id)
-                st.session_state.pop("band_avail_selected_slot", None)
+                for ts in selected_timestamps:
+                    add_rehearsal(band_id, ts, st.session_state.user.id)
+                st.session_state.pop("band_avail_selected_range", None)
                 st.rerun()
 
     if st.button("To current week", width='stretch', key="band_avail_current_week"):
