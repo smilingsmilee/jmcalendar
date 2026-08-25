@@ -330,11 +330,25 @@ def show_availabilities(band_id, members):
             rehearsal_attendance, _ = get_rehearsals_from_band_id(band_id)
             if any(ts in rehearsal_attendance for ts in selected_timestamps):
                 st.caption("A rehearsal already overlaps this range.")
-            elif st.button("Create rehearsal", key="band_avail_create_rehearsal"):
-                for ts in selected_timestamps:
-                    add_rehearsal(band_id, ts, st.session_state.user.id)
-                st.session_state.pop("band_avail_selected_range", None)
-                st.rerun()
+            else:
+                confirm_key = "confirm_create_band_avail_rehearsal"
+                if st.session_state.get(confirm_key):
+                    st.warning("Create a rehearsal for this time range?")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("Yes, create", key=f"{confirm_key}_yes", width='stretch'):
+                            for ts in selected_timestamps:
+                                add_rehearsal(band_id, ts, st.session_state.user.id)
+                            st.session_state.pop(confirm_key, None)
+                            st.session_state.pop("band_avail_selected_range", None)
+                            st.rerun()
+                    with col2:
+                        if st.button("Cancel", key=f"{confirm_key}_no", width='stretch'):
+                            st.session_state.pop(confirm_key, None)
+                            st.rerun()
+                elif st.button("Create rehearsal", key="band_avail_create_rehearsal"):
+                    st.session_state[confirm_key] = True
+                    st.rerun()
 
     if st.button("To current week", width='stretch', key="band_avail_current_week"):
         st.session_state.band_avail_week_offset = 0
