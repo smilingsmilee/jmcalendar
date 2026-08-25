@@ -17,6 +17,11 @@ from views.band import band_page
 def main():
     st.set_page_config(page_title="JMCalendar", page_icon=":house:")
 
+    st.markdown(
+        "<style>[data-testid=\"stColumn\"] { min-width: 0 !important; }</style>",
+        unsafe_allow_html=True,
+    )
+
     if "user" not in st.session_state:
         st.session_state.user = None
     if "page" not in st.session_state:
