@@ -53,6 +53,29 @@ def band_page():
             st.session_state.page = "home"
             st.rerun()
 
+    if st.session_state.is_leader:
+        if st.session_state.get("confirm_delete_band"):
+            st.warning("Remove all members and delete this band?")
+            col_yes, col_no = st.columns(2)
+            with col_yes:
+                if st.button("Yes", key="confirm_delete_band_yes", width="stretch"):
+                    try:
+                        delete_band(band_id)
+                        st.session_state.pop("confirm_delete_band", None)
+                        st.session_state.pop("band", None)
+                        st.session_state.page = "home"
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Could not delete band: {e}")
+            with col_no:
+                if st.button("No", key="confirm_delete_band_no", width="stretch"):
+                    st.session_state.pop("confirm_delete_band", None)
+                    st.rerun()
+        else:
+            if st.button("Delete band", width="stretch"):
+                st.session_state.confirm_delete_band = True
+                st.rerun()
+    
 def show_band_name_and_invite_link(band_name, band_id):
     st.title(band_name)
 

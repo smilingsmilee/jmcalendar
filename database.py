@@ -141,3 +141,6 @@ def remove_member_from_band(band_id, member_id):
 
 def update_band_name(band_id, name):
     get_client().table("bands").update({"name": name}).eq("id", band_id).execute()
+
+def delete_band(band_id):
+    get_client().table("bands").delete().eq("id", band_id).execute()
