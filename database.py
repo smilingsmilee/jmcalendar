@@ -71,17 +71,16 @@ def reorder_band_members(band_id, ordered_member_ids):
     for index, member_id in enumerate(ordered_member_ids):
         get_client().table("members").update({"order": index}).eq("band_id", band_id).eq("member_id", member_id).execute()
 
-def get_availabilities_from_band_id(band_id):
-    members = get_members_from_band_id(band_id)
+def get_availabilities_from_band_id(band_id, members=None):
+    if members is None:
+        members = get_members_from_band_id(band_id)
+    member_ids = [member["id"] for member in members]
+    if not member_ids:
+        return {}
+    result = get_client().table("availabilities").select("id, timestamp").in_("id", member_ids).execute()
     band_availabilities = {}
-    for member in members:
-        user_id = member["id"]
-        availabilities = get_availabilities_from_user_id(user_id)
-        for timestamp in availabilities:
-            if timestamp not in band_availabilities:
-                band_availabilities[timestamp] = [user_id]
-            else:
-                band_availabilities[timestamp].append(user_id)
+    for row in result.data:
+        band_availabilities.setdefault(row["timestamp"], []).append(row["id"])
     return band_availabilities
 
 def get_availabilities_from_user_id(id):
@@ -100,15 +99,14 @@ def add_rehearsal(band_id, timestamp, member_id, location=None):
     get_client().table("rehearsals").upsert(rehearsal).execute()
 
 def get_rehearsals_from_band_id(band_id):
-    result = get_client().table("rehearsals").select("timestamp, member_id, attendance").eq("band_id", band_id).execute()
+    result = get_client().table("rehearsals").select("timestamp, member_id, attendance, location").eq("band_id", band_id).execute()
     rehearsals = {}
+    locations = {}
     for row in result.data:
         rehearsals.setdefault(row["timestamp"], {})[row["member_id"]] = row["attendance"]
-    return rehearsals
-
-def get_rehearsal_locations_from_band_id(band_id):
-    result = get_client().table("rehearsals").select("timestamp, location").eq("band_id", band_id).execute()
-    return {row["timestamp"]: row["location"] for row in result.data if row["location"]}
+        if row["location"]:
+            locations[row["timestamp"]] = row["location"]
+    return rehearsals, locations
 
 def get_rehearsal_location(band_id, timestamp):
     result = get_client().table("rehearsals").select("location").eq("band_id", band_id).eq("timestamp", timestamp).limit(1).execute()

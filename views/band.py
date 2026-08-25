@@ -17,14 +17,17 @@ def band_page():
 
     st.divider()
 
-    show_members(band_id)
+    members = get_members_from_band_id(band_id)
+
+    show_members(band_id, members)
 
     st.divider()
 
-    show_availabilities(band_id)
+    show_availabilities(band_id, members)
+
     st.divider()
 
-    show_upcoming_rehearsals(band_id)
+    show_upcoming_rehearsals(band_id, members)
 
     st.divider()
 
@@ -117,9 +120,8 @@ def get_key_member_ids(band_id, members):
     key_member_ids &= all_ids
     return key_member_ids
 
-def show_members(band_id):
+def show_members(band_id, members):
     st.subheader("Members")
-    members = get_members_from_band_id(band_id)
     if not members:
         st.info("No members yet.")
         return
@@ -193,10 +195,9 @@ def move_member(band_id, members, from_index, to_index):
     reorder_band_members(band_id, ids)
     st.rerun()
 
-def show_availabilities(band_id):
+def show_availabilities(band_id, members):
     st.subheader("Availability")
 
-    members = get_members_from_band_id(band_id)
     total_members = len(members)
     if total_members == 0:
         st.info("No members yet.")
@@ -211,7 +212,7 @@ def show_availabilities(band_id):
     if "band_avail_week_offset" not in st.session_state:
         st.session_state.band_avail_week_offset = 0
 
-    band_availabilities = get_availabilities_from_band_id(band_id)
+    band_availabilities = get_availabilities_from_band_id(band_id, members)
 
     today = datetime.now().date()
     monday = today - timedelta(days=today.weekday()) + timedelta(weeks=st.session_state.band_avail_week_offset)
@@ -326,7 +327,7 @@ def show_availabilities(band_id):
         )
 
         if st.session_state.is_leader:
-            rehearsal_attendance = get_rehearsals_from_band_id(band_id)
+            rehearsal_attendance, _ = get_rehearsals_from_band_id(band_id)
             if any(ts in rehearsal_attendance for ts in selected_timestamps):
                 st.caption("A rehearsal already overlaps this range.")
             elif st.button("Create rehearsal", key="band_avail_create_rehearsal"):
@@ -354,12 +355,10 @@ def merge_rehearsal_ranges(timestamps):
         ranges.append((start, prev + timedelta(hours=1)))
     return ranges
 
-def show_upcoming_rehearsals(band_id):
+def show_upcoming_rehearsals(band_id, members):
     st.subheader("Upcoming Rehearsals")
 
-    members = get_members_from_band_id(band_id)
-    rehearsal_attendance = get_rehearsals_from_band_id(band_id)
-    rehearsal_locations = get_rehearsal_locations_from_band_id(band_id)
+    rehearsal_attendance, rehearsal_locations = get_rehearsals_from_band_id(band_id)
 
     now = datetime.now()
     upcoming_timestamps = [
