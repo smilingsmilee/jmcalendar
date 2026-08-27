@@ -53,6 +53,7 @@ def band_page():
                 st.rerun()
     with col2:
         if st.button("To home", width="stretch"):
+            clear_band_session_state()
             st.session_state.page = "home"
             st.rerun()
 
@@ -78,7 +79,20 @@ def band_page():
             if st.button("Delete band", width="stretch"):
                 st.session_state.confirm_delete_band = True
                 st.rerun()
-    
+
+def clear_band_session_state():
+    for key in [
+        "is_leader",
+        "change_band_name_form",
+        "confirm_quit_band",
+        "confirm_delete_band",
+        "band_key_members",
+        "band_avail_week_offset",
+        "band_avail_selected_range",
+        "confirm_create_band_avail_rehearsal",
+    ]:
+        st.session_state.pop(key, None)
+
 def show_band_name_and_invite_link(band_name, band_id):
     st.title(band_name)
 
