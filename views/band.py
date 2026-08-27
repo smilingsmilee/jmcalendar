@@ -270,6 +270,10 @@ def show_availabilities(band_id, members):
     grid_key = f"band_avail_heatmap_{band_id}_{monday.isoformat()}"
     clicked = availability_heatmap(days=day_labels, hours=time_labels, counts=counts, max_count=max_count, key=grid_key)
 
+    if st.button("To current week", width='stretch', key="band_avail_current_week"):
+        st.session_state.band_avail_week_offset = 0
+        st.rerun()
+
     if clicked is not None:
         row_start, row_end, col = clicked
         st.session_state.band_avail_selected_range = {
@@ -349,10 +353,6 @@ def show_availabilities(band_id, members):
                 elif st.button("Create rehearsal", key="band_avail_create_rehearsal"):
                     st.session_state[confirm_key] = True
                     st.rerun()
-
-    if st.button("To current week", width='stretch', key="band_avail_current_week"):
-        st.session_state.band_avail_week_offset = 0
-        st.rerun()
 
 def merge_rehearsal_ranges(timestamps):
     ranges = []
