@@ -31,6 +31,9 @@ def add_new_band_to_database(name):
     return result.data[0]["id"]
 
 def join_band(user_id, band_id, is_leader=False):
+    existing = get_client().table("members").select("member_id").eq("band_id", band_id).eq("member_id", user_id).execute()
+    if existing.data:
+        return
     get_client().table("members").upsert({"band_id": band_id, "member_id": user_id, "leader": is_leader}).execute()
 
 def get_availability(user_id):
