@@ -148,18 +148,15 @@ def show_members(band_id, members):
                 st.markdown(f"**{member['name']}**")
     else:
         key_member_ids = get_key_member_ids(band_id, members)
+        with st.expander("Reorder members"):
+            show_reorder_members_form(band_id, members)
+
         st.caption("⭐ Key members must all be available for a slot to show as free on the heatmap. This selection is only visible to you and resets when you leave the page.")
-        for index, member in enumerate(members):
-            col1, col2, col3, col4, col5, col6 = st.columns([1, 1, 4, 8, 2, 4])
+        for member in members:
+            col1, col2, col3, col4 = st.columns([4, 4, 1, 1])
             with col1:
-                if st.button("↑", key=f"up_{member['id']}", disabled=index == 0):
-                    move_member(band_id, members, index, index - 1)
-            with col2:
-                if st.button("↓", key=f"down_{member['id']}", disabled=index == len(members) - 1):
-                    move_member(band_id, members, index, index + 1)
-            with col3:
                 st.markdown(f"**{member['name']}**")
-            with col4:
+            with col2:
                 instrument = st.text_input(
                     "Instrument",
                     value=member["instrument"] or "",
@@ -173,7 +170,7 @@ def show_members(band_id, members):
                     st.rerun()
                 except Exception as e:
                     st.error(f"Could not update {member['name']}'s instrument: {e}")
-            with col5:
+            with col3:
                 key_member = st.checkbox(
                     "⭐",
                     value=member["id"] in key_member_ids,
@@ -183,7 +180,7 @@ def show_members(band_id, members):
                     key_member_ids.add(member["id"])
                 else:
                     key_member_ids.discard(member["id"])
-            with col6:
+            with col4:
                 if member["id"] != st.session_state.user.id:
                     confirm_key = f"confirm_kick_{member['id']}"
                     if st.session_state.get(confirm_key):
@@ -203,11 +200,44 @@ def show_members(band_id, members):
                             st.session_state[confirm_key] = True
                             st.rerun()
 
-def move_member(band_id, members, from_index, to_index):
-    ids = [member["id"] for member in members]
-    ids[from_index], ids[to_index] = ids[to_index], ids[from_index]
-    reorder_band_members(band_id, ids)
-    st.rerun()
+def show_reorder_members_form(band_id, members):
+    total = len(members)
+    st.caption(f"Give each member a unique position from 1 to {total}, then save.")
+    with st.form(f"reorder_members_form_{band_id}"):
+        positions = {}
+        for index, member in enumerate(members):
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.markdown(f"**{member['name']}**")
+            with col2:
+                positions[member["id"]] = st.number_input(
+                    "Position",
+                    min_value=1,
+                    max_value=total,
+                    value=index + 1,
+                    step=1,
+                    label_visibility="collapsed",
+                    key=f"reorder_position_{band_id}_{member['id']}_{index}"
+                )
+        submitted = st.form_submit_button("Save order", width="stretch")
+
+    if not submitted:
+        return
+
+    if sorted(positions.values()) != list(range(1, total + 1)):
+        st.error(f"Each position from 1 to {total} must be used exactly once.")
+        return
+
+    old_ids = [member["id"] for member in members]
+    new_ids = sorted(old_ids, key=lambda member_id: positions[member_id])
+    changed = {i: member_id for i, member_id in enumerate(new_ids) if old_ids[i] != member_id}
+    if not changed:
+        return
+    try:
+        reorder_band_members(band_id, changed)
+        st.rerun()
+    except Exception as e:
+        st.error(f"Could not save new member order: {e}")
 
 def show_availabilities(band_id, members):
     st.subheader("Availability")

@@ -70,8 +70,8 @@ def get_members_from_band_id(band_id):
 def update_member_instrument(band_id, member_id, instrument):
     get_client().table("members").update({"instrument": instrument}).eq("band_id", band_id).eq("member_id", member_id).execute()
 
-def reorder_band_members(band_id, ordered_member_ids):
-    for index, member_id in enumerate(ordered_member_ids):
+def reorder_band_members(band_id, positions):
+    for index, member_id in positions.items():
         get_client().table("members").update({"order": index}).eq("band_id", band_id).eq("member_id", member_id).execute()
 
 def get_availabilities_from_band_id(band_id, members=None):
