@@ -8,6 +8,18 @@ class Band:
         self.id = id
         self.name = name
 
+PAGE_SIZE = 1000
+
+def fetch_all(build_query):
+    rows = []
+    start = 0
+    while True:
+        page = build_query().range(start, start + PAGE_SIZE - 1).execute().data
+        rows.extend(page)
+        if len(page) < PAGE_SIZE:
+            return rows
+        start += PAGE_SIZE
+
 def get_client():
     if "client" not in st.session_state:
         st.session_state.client = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
@@ -37,8 +49,8 @@ def join_band(user_id, band_id, is_leader=False):
     get_client().table("members").upsert({"band_id": band_id, "member_id": user_id, "leader": is_leader}).execute()
 
 def get_availability(user_id):
-    result = get_client().table("availabilities").select("timestamp").eq("id", user_id).execute()
-    return {row["timestamp"] for row in result.data}
+    rows = fetch_all(lambda: get_client().table("availabilities").select("timestamp").eq("id", user_id).order("timestamp"))
+    return {row["timestamp"] for row in rows}
 
 def add_availability(user_id, timestamp):
     get_client().table("availabilities").upsert({"id": user_id, "timestamp": timestamp}).execute()
@@ -80,15 +92,15 @@ def get_availabilities_from_band_id(band_id, members=None):
     member_ids = [member["id"] for member in members]
     if not member_ids:
         return {}
-    result = get_client().table("availabilities").select("id, timestamp").in_("id", member_ids).execute()
+    rows = fetch_all(lambda: get_client().table("availabilities").select("id, timestamp").in_("id", member_ids).order("id").order("timestamp"))
     band_availabilities = {}
-    for row in result.data:
+    for row in rows:
         band_availabilities.setdefault(row["timestamp"], []).append(row["id"])
     return band_availabilities
 
 def get_availabilities_from_user_id(id):
-    result = get_client().table("availabilities").select("timestamp").eq("id", id).execute()
-    return [row["timestamp"] for row in result.data]
+    rows = fetch_all(lambda: get_client().table("availabilities").select("timestamp").eq("id", id).order("timestamp"))
+    return [row["timestamp"] for row in rows]
 
 def add_rehearsal(band_id, timestamp, member_id, location=None):
     rehearsal = {
@@ -102,10 +114,10 @@ def add_rehearsal(band_id, timestamp, member_id, location=None):
     get_client().table("rehearsals").upsert(rehearsal).execute()
 
 def get_rehearsals_from_band_id(band_id):
-    result = get_client().table("rehearsals").select("timestamp, member_id, attendance, location").eq("band_id", band_id).execute()
+    rows = fetch_all(lambda: get_client().table("rehearsals").select("timestamp, member_id, attendance, location").eq("band_id", band_id).order("timestamp").order("member_id"))
     rehearsals = {}
     locations = {}
-    for row in result.data:
+    for row in rows:
         rehearsals.setdefault(row["timestamp"], {})[row["member_id"]] = row["attendance"]
         if row["location"]:
             locations[row["timestamp"]] = row["location"]
@@ -134,8 +146,7 @@ def delete_rehearsal(band_id, timestamp):
     get_client().table("rehearsals").delete().eq("band_id", band_id).eq("timestamp", timestamp).execute()
 
 def get_rehearsals_from_user_id(user_id):
-    result = get_client().table("rehearsals").select("timestamp, band_id, location").eq("member_id", user_id).eq("attendance", True).execute()
-    return result.data
+    return fetch_all(lambda: get_client().table("rehearsals").select("timestamp, band_id, location").eq("member_id", user_id).eq("attendance", True).order("timestamp").order("band_id"))
 
 def remove_member_from_band(band_id, member_id):
     get_client().table("members").delete().eq("band_id", band_id).eq("member_id", member_id).execute()
